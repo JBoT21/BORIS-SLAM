@@ -19,3 +19,8 @@ def Visualizer(map_grid, robot_pose, sensor_data):
     plt.show()
 
 # Basic visualization function - needs to be tested with actual map and pose data.
+    
+def update():
+    # Placeholder for updating the visualization with new map and pose data.
+    # This function would be called in the main loop after processing sensor data and updating the map and localization.
+    pass

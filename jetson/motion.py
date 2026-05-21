@@ -25,4 +25,7 @@ def stop():
 def servo(angle):
    return f"SERVO:{angle}"
 
+def execute(serial, command):
+    serial.send(command)
+
 

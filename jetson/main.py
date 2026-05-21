@@ -23,7 +23,7 @@ loop:
 import time
 #Hardware interfaces
 from serial_link import serialLink
-from sensors import UltrasonicParser, IMUParser
+from sensors import SensorParser
 from motion import MotionController
 
 #SLAM components

@@ -26,3 +26,6 @@ def send(command):
 
 def serialLink():
     print("SerialLink: Not implemented yet")
+
+def close():
+    ser.close()

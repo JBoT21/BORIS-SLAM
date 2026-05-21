@@ -10,6 +10,16 @@ Responsibilities:
 
 4. Smooth noisy readings
 """
+def SensorParser(rawStr):
+    if rawStr.startswith("ULTRASONIC:"):
+        return UltrasonicParser(rawStr)
+    elif rawStr.startswith("IMU:"):
+        return IMUParser(rawStr)
+    else:
+        print(f"Unknown sensor type in string: {rawStr}")
+        return None
+    
+
 def UltrasonicParser(rawStr):
     if rawStr.startswith("ULTRASONIC:"):
         try:
