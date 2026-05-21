@@ -11,33 +11,49 @@ Responsibilities:
 
 (Most previously adapted code will go here)
 """
+
 import numpy as np
+import math
 
-def MappingEngine(occupancy_grid, robot_pose, sensor_data):
 
-    # Unpack robot pose
-    x, y, heading = robot_pose
-    
-    # Process sensor data (assuming it's a list of (angle, distance) tuples)
-    for angle, distance in sensor_data:
-        # Convert angle to radians and adjust for robot's heading
-        total_angle = np.radians(angle + heading)
-        
-        # Calculate the coordinates of the detected obstacle
-        obs_x = int(x + distance * np.cos(total_angle))
-        obs_y = int(y + distance * np.sin(total_angle))
-        
-        # Update occupancy grid (mark as occupied)
-        if 0 <= obs_x < occupancy_grid.shape[0] and 0 <= obs_y < occupancy_grid.shape[1]:
-            occupancy_grid[obs_y, obs_x] = 1  # Mark as occupied
-            
-            # Optionally mark free space along the ray
-            for i in range(1, int(distance)):
-                free_x = int(x + i * np.cos(total_angle))
-                free_y = int(y + i * np.sin(total_angle))
-                if 0 <= free_x < occupancy_grid.shape[0] and 0 <= free_y < occupancy_grid.shape[1]:
-                    occupancy_grid[free_y, free_x] = -1  # Mark as free
+class MappingEngine:
+  
+    def __init__(self, grid, localization, max_range=150):
+        self.grid = grid
+        self.localization = localization
+        self.max_range = max_range
 
-    return occupancy_grid
+    # Called when a new ultrasonic reading arrives
+    def update_from_ultrasonic(self, distance_cm):       
+        self.last_distance = distance_cm
 
-#Return to later
+    # Integrate the most recent reading into the occupancy grid
+    def integrate(self):
+        if not hasattr(self, "last_distance"):
+            return  # no data yet
+
+        dist = self.last_distance
+        if dist is None:
+            return
+
+        # Robot pose
+        x, y, heading_deg = self.localization.get_pose()
+
+        # heading -> radians
+        heading = math.radians(heading_deg)
+
+        # Compute obstacle cell
+        obs_x = int(x + dist * math.cos(heading))
+        obs_y = int(y + dist * math.sin(heading))
+
+        # Mark free space along the ray
+        for i in range(1, dist):
+            fx = int(x + i * math.cos(heading))
+            fy = int(y + i * math.sin(heading))
+
+            if self.grid.in_bounds(fx, fy):
+                self.grid.mark_free(fx, fy)
+
+        # Mark obstacle
+        if self.grid.in_bounds(obs_x, obs_y):
+            self.grid.mark_occupied(obs_x, obs_y)
