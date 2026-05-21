@@ -8,12 +8,18 @@ def read_ultrasonic():
        return int(line.split(":")[1])
     return None
 
-#def read_line():
+def read_line():
+    print("read_line: Not implemented yet")
+
+def read_imu():
+    print("read_imu: Not implemented yet")
 
 
-#def read_imu():
-    #IMU is used to determine robot orientation
+def send(command):
+    print("send: Not implemented fully yet")
+    
+    ser.write((command + "\n").encode())
+    print(f"Sent command: {command}")
 
-
-#def send(command):
-#    ser.write((command + "\n").encode())
+def serialLink():
+    print("SerialLink: Not implemented yet")    

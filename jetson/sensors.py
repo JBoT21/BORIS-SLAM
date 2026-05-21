@@ -10,3 +10,8 @@ Responsibilities:
 
 4. Smooth noisy readings
 """
+def UltrasonicParser():
+    print("UltrasonicParser: Not implemented yet")
+
+def IMUParser():
+    print("IMUParser: Not implemented yet")
