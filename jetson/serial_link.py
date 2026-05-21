@@ -9,17 +9,20 @@ def read_ultrasonic():
     return None
 
 def read_line():
-    print("read_line: Not implemented yet")
+    return ser.readline().decode().strip()
 
 def read_imu():
-    print("read_imu: Not implemented yet")
+    line = ser.readline().decode().strip()
+    if line.startswith("IMU:"):
+        parts = line.split(":")[1].split(",")
+        return tuple(map(float, parts))
+    return None
+    # Example: "IMU:1.2,0.1,-0.3" → (1.2, 0.1, -0.3)
 
 
 def send(command):
-    print("send: Not implemented fully yet")
-    
     ser.write((command + "\n").encode())
     print(f"Sent command: {command}")
 
 def serialLink():
-    print("SerialLink: Not implemented yet")    
+    print("SerialLink: Not implemented yet")

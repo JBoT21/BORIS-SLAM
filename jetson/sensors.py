@@ -10,8 +10,27 @@ Responsibilities:
 
 4. Smooth noisy readings
 """
-def UltrasonicParser():
-    print("UltrasonicParser: Not implemented yet")
+def UltrasonicParser(rawStr):
+    if rawStr.startswith("ULTRASONIC:"):
+        try:
+            return int(rawStr.split(":")[1])
+        except ValueError:
+            print(f"Invalid ultrasonic reading: {rawStr}")
+            return None
+    else:
+        print(f"Unexpected format for ultrasonic reading: {rawStr}")
+        return None
+    
 
-def IMUParser():
-    print("IMUParser: Not implemented yet")
+def IMUParser(rawStr):
+    if rawStr.startswith("IMU:"):
+        try:
+            parts = rawStr.split(":")[1].split(",")
+            return tuple(map(float, parts))
+        except ValueError:
+            print(f"Invalid IMU reading: {rawStr}")
+            return None
+    else:
+        print(f"Unexpected format for IMU reading: {rawStr}")
+        return None
+    

@@ -10,7 +10,6 @@ def MotionController(serial):
 def forward(speed):
     return f"FORWARD:{speed}"
 
-
 def backward(speed):
     return f"BACKWARD:{speed}"
 
