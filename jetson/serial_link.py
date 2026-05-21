@@ -8,5 +8,12 @@ def read_ultrasonic():
        return int(line.split(":")[1])
     return None
 
-def send(command):
-    ser.write((command + "\n").encode())
+#def read_line():
+
+
+#def read_imu():
+    #IMU is used to determine robot orientation
+
+
+#def send(command):
+#    ser.write((command + "\n").encode())
