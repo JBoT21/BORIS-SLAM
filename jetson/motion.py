@@ -4,28 +4,42 @@ Responsibilities:
 High-level movement commands sent to the ESP32.
 This module abstracts away the serial commands.
 """
-def MotionController(serial):
-    print("MotionController: Not implemented yet")
+"""
+motion.py — High-level movement commands for ESP32 motor controller.
+"""
 
-def forward(speed):
-    return f"FORWARD:{speed}"
+class MotionController:
 
-def backward(speed):
-    return f"BACKWARD:{speed}"
+    def __init__(self, serial_link):
+        self.serial = serial_link
 
-def turn_left(speed):
-    return f"TURN_LEFT:{speed}"
+    def forward(self, speed=150):
+        cmd = f"MOVE FWD {speed}"
+        self.serial.send(cmd)
 
-def turn_right(speed):
-    return f"TURN_RIGHT:{speed}"
+    def backward(self, speed=150):
+        cmd = f"MOVE BACK {speed}"
+        self.serial.send(cmd)
 
-def stop():
-    return "STOP"
+    def turn_left(self, speed=150):
+        cmd = f"TURN LEFT {speed}"
+        self.serial.send(cmd)
 
-def servo(angle):
-   return f"SERVO:{angle}"
+    def turn_right(self, speed=150):
+        cmd = f"TURN RIGHT {speed}"
+        self.serial.send(cmd)
 
-def execute(serial, command):
-    serial.send(command)
+    def stop(self):
+        self.serial.send("STOP")
+
+
+    def servo(self, angle):
+        angle = max(0, min(180, angle))  # clamp
+        self.serial.send(f"SERVO {angle}")
+
+    def execute(self, command):
+        """Allows Navigator to send arbitrary commands."""
+        self.serial.send(command)
+
 
 

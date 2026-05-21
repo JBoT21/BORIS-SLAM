@@ -10,37 +10,67 @@ Responsibilities:
 
 4. Smooth noisy readings
 """
-def SensorParser(rawStr):
-    if rawStr.startswith("ULTRASONIC:"):
-        return UltrasonicParser(rawStr)
-    elif rawStr.startswith("IMU:"):
-        return IMUParser(rawStr)
-    else:
-        print(f"Unknown sensor type in string: {rawStr}")
-        return None
-    
+"""
+sensors.py — Parse raw sensor strings into structured data.
+"""
 
-def UltrasonicParser(rawStr):
-    if rawStr.startswith("ULTRASONIC:"):
-        try:
-            return int(rawStr.split(":")[1])
-        except ValueError:
-            print(f"Invalid ultrasonic reading: {rawStr}")
-            return None
-    else:
-        print(f"Unexpected format for ultrasonic reading: {rawStr}")
-        return None
-    
+from collections import deque
+import statistics
 
-def IMUParser(rawStr):
-    if rawStr.startswith("IMU:"):
+
+class SensorData:
+    """Container for parsed sensor readings."""
+    def __init__(self):
+        self.ultrasonic = None
+        self.imu = None   # (yaw, pitch, roll)
+
+
+class SensorParser:
+  
+    def __init__(self, smooth_window=5):
+        self.smooth_window = smooth_window
+        self.ultra_history = deque(maxlen=smooth_window)
+
+    def parse(self, raw):
+        data = SensorData()
+
+        if raw is None or raw == "":
+            return data
+
+        if raw.startswith("ULTRASONIC:"):
+            data.ultrasonic = self.parse_ultrasonic(raw)
+
+        elif raw.startswith("IMU:"):
+            data.imu = self._parse_imu(raw)
+
+        else:
+            print(f"[SensorParser] Unknown sensor string: {raw}")
+
+        return data
+
+    def parse_ultrasonic(self, raw):
         try:
-            parts = rawStr.split(":")[1].split(",")
-            return tuple(map(float, parts))
-        except ValueError:
-            print(f"Invalid IMU reading: {rawStr}")
+            dist = int(raw.split(":")[1])
+
+            # Value valudation
+            if dist < 0 or dist > 500:
+                return None
+
+            # Add to history for smoothing
+            self.ultra_history.append(dist)
+            # Return smoothed value
+            return int(statistics.mean(self.ultra_history))
+
+        except Exception:
+            print(f"[SensorParser] Invalid ultrasonic reading: {raw}")
             return None
-    else:
-        print(f"Unexpected format for IMU reading: {rawStr}")
-        return None
-    
+        
+    def _parse_imu(self, raw):
+        try:
+            parts = raw.split(":")[1].split(",")
+            yaw, pitch, roll = map(float, parts)
+            return (yaw, pitch, roll)
+
+        except Exception:
+            print(f"[SensorParser] Invalid IMU reading: {raw}")
+            return None
