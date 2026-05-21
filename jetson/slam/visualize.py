@@ -18,7 +18,7 @@ class Visualizer:
     Displays:
         - Occupancy grid
         - Robot pose
-        - Optional sensor rays
+        - Sensor rays
     """
 
     def __init__(self, grid, localization, show_rays=False):
