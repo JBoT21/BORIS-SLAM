@@ -19,3 +19,34 @@ const int servoPin = 14;
 Servo scanServo;
 MPU6050 imu;
 
+void setup() {
+
+    Serial.println("Initializing...");
+    Serial.begin(115200);
+    delay(200);
+    Serial.println("Serial has been set up.");
+
+    //Ultrasonic Sensor Pins
+    pinMode(trigPin, OUTPUT);
+    pinMode(echoPin, INPUT);
+    Serial.println("Ultrasonic sensor pins have been set up.");
+
+    //Motor Pins
+    pinMode(motorLeftA, OUTPUT);
+    pinMode(motorLeftB, OUTPUT);
+    pinMode(motorRightA, OUTPUT);
+    pinMode(motorRightB, OUTPUT);
+    Serial.println("Motor pins have been set up.");
+
+    //Servo Initialization
+    scanServo.attach(servoPin);
+    Serial.println("Servo has been set up.");
+
+    //IMU
+    Wire.begin();
+    Serial.println("Wire (I2C) has been initialized.");
+    imu.initialize();
+    Serial.println("MPU6050 IMU has been initialized.");
+    Serial.println("Setup Complete - ESP32 Ready!");
+}
+
