@@ -3,6 +3,11 @@
 #include <Servo.h>
 #include "MPU6050.h"
 
+//Global Variables
+float yaw = 0;
+unsigned long lastTime = 0;
+
+
 // Hardware Pin Definitions
 const int trigPin = 5;
 const int echoPin = 18;
@@ -27,7 +32,7 @@ const int chRB = 3;
 void setup() {
 
     Serial.begin(115200);
-        Serial.println("Initializing...");
+    Serial.println("Initializing...");
     delay(200);
     Serial.println("Serial has been set up.");
 
@@ -58,6 +63,8 @@ void setup() {
     imu.initialize();
     Serial.println("MPU6050 IMU has been initialized.");
     Serial.println("Setup Complete - ESP32 Ready!");
+
+    lastTime = micros();
 }
 
 //Ultrasonic Sound Sensor Function
@@ -80,11 +87,23 @@ long readUltrasonic(){
 //IMU Data Function
 void sendIMU(){
 
-    float yaw = imu.getRotationZ() / 131.0; // Convert raw data to degrees/s
-    float pitch = imu.getRotationX() / 131.0;
-    float roll = imu.getRotationY() / 131.0;
+    // Read raw gyro Z (deg/sec)
+    float gyroZ = imu.getRotationZ() / 131.0;
 
-    Serial.printf("IMU:%0.2f,%0.2f,%0.2f\n", yaw, pitch, roll);
+    // Time step
+    unsigned long now = micros();
+    float dt = (now - lastTime) / 1000000.0;
+    lastTime = now;
+
+    // Integrate gyro to get yaw
+    yaw += gyroZ * dt;
+
+    // Normalize yaw to 0–360
+    if (yaw < 0) yaw += 360;
+    if (yaw >= 360) yaw -= 360;
+
+    // Send yaw, pitch, roll (pitch/roll are placeholders)
+    Serial.printf("IMU:%0.2f,0.00,0.00\n", yaw);
 }
 
 //Motor Control Functions
