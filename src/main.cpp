@@ -84,4 +84,30 @@ void moveForward(int speed) {
     analogWrite(motorRightA, speed);
     analogWrite(motorRightB, 0);
 }
-void mo
+void moveBackward(int speed) {
+    analogWrite(motorLeftA, 0);
+    analogWrite(motorLeftB, speed);
+    analogWrite(motorRightA, 0);
+    analogWrite(motorRightB, speed);
+}
+void turnLeft(int speed) {
+    analogWrite(motorLeftA, 0);
+    analogWrite(motorLeftB, speed);
+    analogWrite(motorRightA, speed);
+    analogWrite(motorRightB, 0);
+}
+void turnRight(int speed) {
+    analogWrite(motorLeftA, speed);
+    analogWrite(motorLeftB, 0);
+    analogWrite(motorRightA, 0);
+    analogWrite(motorRightB, speed);
+}
+void stopMotors() {
+    analogWrite(motorLeftA, 0);
+    analogWrite(motorLeftB, 0);
+    analogWrite(motorRightA, 0);
+    analogWrite(motorRightB, 0);
+}
+
+//Command parser
+
