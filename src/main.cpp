@@ -111,3 +111,25 @@ void stopMotors() {
 
 //Command parser
 
+void parseCommand(String cmd){
+    cmd.trim();
+    if(cmd.startsWith("MOVE FWD")){
+        int speed = cmd.substring(9).toInt();
+        moveForward(speed);
+    } else if(cmd.startsWith("MOVE BACK")){
+        int speed = cmd.substring(10).toInt();
+        moveBackward(speed);
+    } else if(cmd.startsWith("TURN LEFT")){
+        int speed = cmd.substring(10).toInt();
+        turnLeft(speed);
+    } else if(cmd.startsWith("TURN RIGHT")){
+        int speed = cmd.substring(10).toInt();
+        turnRight(speed);
+    } else if(cmd == "STOP"){
+        stopMotors();
+    } else if(cmd.startsWith("SERVO")){
+        int angle = cmd.substring(6).toInt();
+        angle = constrain(angle, 0, 180);
+        scanServo.write(angle);
+    }
+}
