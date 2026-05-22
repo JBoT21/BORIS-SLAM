@@ -19,10 +19,15 @@ const int servoPin = 14;
 Servo scanServo;
 MPU6050 imu;
 
+const int chLA = 0;
+const int chLB = 1;
+const int chRA = 2;
+const int chRB = 3;
+
 void setup() {
 
-    Serial.println("Initializing...");
     Serial.begin(115200);
+        Serial.println("Initializing...");
     delay(200);
     Serial.println("Serial has been set up.");
 
@@ -32,10 +37,15 @@ void setup() {
     Serial.println("Ultrasonic sensor pins have been set up.");
 
     //Motor Pins
-    pinMode(motorLeftA, OUTPUT);
-    pinMode(motorLeftB, OUTPUT);
-    pinMode(motorRightA, OUTPUT);
-    pinMode(motorRightB, OUTPUT);
+    ledcAttachPin(motorLeftA,  chLA);
+    ledcAttachPin(motorLeftB,  chLB);
+    ledcAttachPin(motorRightA, chRA);
+    ledcAttachPin(motorRightB, chRB);
+
+    ledcSetup(chLA, 1000, 8);
+    ledcSetup(chLB, 1000, 8);
+    ledcSetup(chRA, 1000, 8);
+    ledcSetup(chRB, 1000, 8);
     Serial.println("Motor pins have been set up.");
 
     //Servo Initialization
@@ -61,7 +71,7 @@ long readUltrasonic(){
     digitalWrite(trigPin, LOW);
 
     // Read the echoPin and calculate distance
-    long duration = pulseIn(echoPin, HIGH);
+    long duration = pulseIn(echoPin, HIGH, 20000);
     long distance = duration * 0.034 / 2; // "☝️🤓 The speed of sound is 0.034 cm/us"
 
     return distance;
@@ -79,34 +89,35 @@ void sendIMU(){
 
 //Motor Control Functions
 void moveForward(int speed) {
-    analogWrite(motorLeftA, speed);
-    analogWrite(motorLeftB, 0);
-    analogWrite(motorRightA, speed);
-    analogWrite(motorRightB, 0);
+    ledcWrite(chLA, speed);
+    ledcWrite(chLB, 0);
+    ledcWrite(chRA, speed);
+    ledcWrite(chRB, 0);
 }
 void moveBackward(int speed) {
-    analogWrite(motorLeftA, 0);
-    analogWrite(motorLeftB, speed);
-    analogWrite(motorRightA, 0);
-    analogWrite(motorRightB, speed);
+    ledcWrite(chLA, 0);
+    ledcWrite(chLB, speed);
+    ledcWrite(chRA, 0);
+    ledcWrite(chRB, speed);
 }
+
 void turnLeft(int speed) {
-    analogWrite(motorLeftA, 0);
-    analogWrite(motorLeftB, speed);
-    analogWrite(motorRightA, speed);
-    analogWrite(motorRightB, 0);
+    ledcWrite(chLA, 0);
+    ledcWrite(chLB, speed);
+    ledcWrite(chRA, speed);
+    ledcWrite(chRB, 0);
 }
 void turnRight(int speed) {
-    analogWrite(motorLeftA, speed);
-    analogWrite(motorLeftB, 0);
-    analogWrite(motorRightA, 0);
-    analogWrite(motorRightB, speed);
+    ledcWrite(chLA, speed);
+    ledcWrite(chLB, 0);
+    ledcWrite(chRA, 0);
+    ledcWrite(chRB, speed);
 }
 void stopMotors() {
-    analogWrite(motorLeftA, 0);
-    analogWrite(motorLeftB, 0);
-    analogWrite(motorRightA, 0);
-    analogWrite(motorRightB, 0);
+    ledcWrite(chLA, 0);
+    ledcWrite(chLB, 0);
+    ledcWrite(chRA, 0);
+    ledcWrite(chRB, 0);
 }
 
 //Command parser
@@ -123,7 +134,7 @@ void parseCommand(String cmd){
         int speed = cmd.substring(10).toInt();
         turnLeft(speed);
     } else if(cmd.startsWith("TURN RIGHT")){
-        int speed = cmd.substring(10).toInt();
+        int speed = cmd.substring(11).toInt();
         turnRight(speed);
     } else if(cmd == "STOP"){
         stopMotors();
