@@ -133,3 +133,22 @@ void parseCommand(String cmd){
         scanServo.write(angle);
     }
 }
+
+//Main Loop
+
+void loop(){
+// Handle incoming commands
+if(Serial.available()){
+    String cmd = Serial.readStringUntil('\n');
+    parseCommand(cmd);
+}
+//Send U.S.S
+long distance = readUltrasonic();
+Serial.printf("ULTRASONIC:%ld\n", distance);
+
+//Send IMU
+sendIMU();
+delay(50); // May need to adjust delay to handle update rates/ avoid flooding serial
+
+
+}
