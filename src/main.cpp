@@ -50,3 +50,19 @@ void setup() {
     Serial.println("Setup Complete - ESP32 Ready!");
 }
 
+//Ultrasonic Sound Sensor Function
+
+long readUltrasonic(){
+    //Clear the trigPin by setting it LOW
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+
+    // Read the echoPin and calculate distance
+    long duration = pulseIn(echoPin, HIGH);
+    long distance = duration * 0.034 / 2; // "☝️🤓 The speed of sound is 0.034 cm/us"
+
+    return distance;
+}
