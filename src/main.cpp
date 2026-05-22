@@ -66,3 +66,22 @@ long readUltrasonic(){
 
     return distance;
 }
+
+//IMU Data Function
+void sendIMU(){
+
+    float yaw = imu.getRotationZ() / 131.0; // Convert raw data to degrees/s
+    float pitch = imu.getRotationX() / 131.0;
+    float roll = imu.getRotationY() / 131.0;
+
+    Serial.printf("IMU:%0.2f,%0.2f,%0.2f\n", yaw, pitch, roll);
+}
+
+//Motor Control Functions
+void moveForward(int speed) {
+    analogWrite(motorLeftA, speed);
+    analogWrite(motorLeftB, 0);
+    analogWrite(motorRightA, speed);
+    analogWrite(motorRightB, 0);
+}
+void mo
