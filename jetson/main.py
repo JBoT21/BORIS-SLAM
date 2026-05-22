@@ -22,7 +22,7 @@ loop:
 """
 import time
 #Hardware interfaces
-from serial_link import serialLink
+from serial_link import *
 from sensors import SensorParser
 from motion import MotionController
 
