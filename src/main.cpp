@@ -8,7 +8,10 @@ float yaw = 0;
 unsigned long lastTime = 0;
 
 
-// Hardware Pin Definitions
+// Hardware Pin Definitions (Adjust ESP32 pins as needed)
+//Note: GPIO 6-11 are reserved for flash memory on most ESP32 boards
+//(So dont use those)
+
 const int trigPin = 5;
 const int echoPin = 18;
 
