@@ -7,181 +7,140 @@
 float yaw = 0;
 unsigned long lastTime = 0;
 
-
 // Hardware Pin Definitions (Adjust ESP32 pins as needed)
 //Note: GPIO 6-11 are reserved for flash memory on most ESP32 boards
 //(So dont use those)
 
-const int trigPin = 5;
-const int echoPin = 18;
+#include <Arduino.h>
+#include <Wire.h>
+#include <Servo.h>
+#include "MPU6050.h"
 
-const int motorLeftA  = 26;
-const int motorLeftB  = 27;
-const int motorRightA = 32;
-const int motorRightB = 33;
+//Pin definitions
+const int trigPin = 4;
+const int echoPin = 15;
 
+// TB6612 Motor Driver Pins
+#define PWMA 18
+#define AIN1 23
+#define AIN2 22
+#define PWMB 19
+#define BIN1 21
+#define BIN2 5
+#define STBY 2
+
+// Servo
 const int servoPin = 14;
 
-//Objects
-
+//Global objecrs
 Servo scanServo;
 MPU6050 imu;
 
-const int chLA = 0;
-const int chLB = 1;
-const int chRA = 2;
-const int chRB = 3;
+float yaw = 0;
+unsigned long lastTime = 0;
 
 void setup() {
-
     Serial.begin(115200);
-    Serial.println("Initializing...");
-    delay(200);
-    Serial.println("Serial has been set up.");
+    Serial2.begin(115200, SERIAL_8N1, 16, 17);
 
-    //Ultrasonic Sensor Pins
+    // Ultrasonic
     pinMode(trigPin, OUTPUT);
     pinMode(echoPin, INPUT);
-    Serial.println("Ultrasonic sensor pins have been set up.");
 
-    //Motor Pins
-    ledcAttachPin(motorLeftA,  chLA);
-    ledcAttachPin(motorLeftB,  chLB);
-    ledcAttachPin(motorRightA, chRA);
-    ledcAttachPin(motorRightB, chRB);
+    // Motor pins
+    pinMode(AIN1, OUTPUT);
+    pinMode(AIN2, OUTPUT);
+    pinMode(BIN1, OUTPUT);
+    pinMode(BIN2, OUTPUT);
+    pinMode(STBY, OUTPUT);
+    digitalWrite(STBY, HIGH);
 
-    ledcSetup(chLA, 1000, 8);
-    ledcSetup(chLB, 1000, 8);
-    ledcSetup(chRA, 1000, 8);
-    ledcSetup(chRB, 1000, 8);
-    Serial.println("Motor pins have been set up.");
+    // PWM channels
+    ledcAttachPin(PWMA, 0);
+    ledcAttachPin(PWMB, 1);
+    ledcSetup(0, 20000, 8);
+    ledcSetup(1, 20000, 8);
 
-    //Servo Initialization
+    // Servo
     scanServo.attach(servoPin);
-    Serial.println("Servo has been set up.");
 
-    //IMU
+    // IMU
     Wire.begin();
-    Serial.println("Wire (I2C) has been initialized.");
     imu.initialize();
-    Serial.println("MPU6050 IMU has been initialized.");
-    Serial.println("Setup Complete - ESP32 Ready!");
 
     lastTime = micros();
 }
 
-//Ultrasonic Sound Sensor Function
-
-long readUltrasonic(){
-    //Clear the trigPin by setting it LOW
+//Ultrasonic 
+long readUltrasonic() {
     digitalWrite(trigPin, LOW);
     delayMicroseconds(2);
     digitalWrite(trigPin, HIGH);
     delayMicroseconds(10);
     digitalWrite(trigPin, LOW);
 
-    // Read the echoPin and calculate distance
     long duration = pulseIn(echoPin, HIGH, 20000);
-    long distance = duration * 0.034 / 2; // "☝️🤓 The speed of sound is 0.034 cm/us"
-
-    return distance;
+    return duration * 0.034 / 2;
 }
 
-//IMU Data Function
-void sendIMU(){
-
-    // Read raw gyro Z (deg/sec)
+//IMU
+void sendIMU() {
     float gyroZ = imu.getRotationZ() / 131.0;
-
-    // Time step
     unsigned long now = micros();
     float dt = (now - lastTime) / 1000000.0;
     lastTime = now;
-
-    // Integrate gyro to get yaw
     yaw += gyroZ * dt;
-
-    // Normalize yaw to 0–360
     if (yaw < 0) yaw += 360;
     if (yaw >= 360) yaw -= 360;
 
-    // Send yaw, pitch, roll (pitch/roll are placeholders)
     Serial.printf("IMU:%0.2f,0.00,0.00\n", yaw);
 }
 
-//Motor Control Functions
-void moveForward(int speed) {
-    ledcWrite(chLA, speed);
-    ledcWrite(chLB, 0);
-    ledcWrite(chRA, speed);
-    ledcWrite(chRB, 0);
-}
-void moveBackward(int speed) {
-    ledcWrite(chLA, 0);
-    ledcWrite(chLB, speed);
-    ledcWrite(chRA, 0);
-    ledcWrite(chRB, speed);
-}
-
-void turnLeft(int speed) {
-    ledcWrite(chLA, 0);
-    ledcWrite(chLB, speed);
-    ledcWrite(chRA, speed);
-    ledcWrite(chRB, 0);
-}
-void turnRight(int speed) {
-    ledcWrite(chLA, speed);
-    ledcWrite(chLB, 0);
-    ledcWrite(chRA, 0);
-    ledcWrite(chRB, speed);
-}
-void stopMotors() {
-    ledcWrite(chLA, 0);
-    ledcWrite(chLB, 0);
-    ledcWrite(chRA, 0);
-    ledcWrite(chRB, 0);
-}
-
-//Command parser
-
-void parseCommand(String cmd){
-    cmd.trim();
-    if(cmd.startsWith("MOVE FWD")){
-        int speed = cmd.substring(9).toInt();
-        moveForward(speed);
-    } else if(cmd.startsWith("MOVE BACK")){
-        int speed = cmd.substring(10).toInt();
-        moveBackward(speed);
-    } else if(cmd.startsWith("TURN LEFT")){
-        int speed = cmd.substring(10).toInt();
-        turnLeft(speed);
-    } else if(cmd.startsWith("TURN RIGHT")){
-        int speed = cmd.substring(11).toInt();
-        turnRight(speed);
-    } else if(cmd == "STOP"){
-        stopMotors();
-    } else if(cmd.startsWith("SERVO")){
-        int angle = cmd.substring(6).toInt();
-        angle = constrain(angle, 0, 180);
-        scanServo.write(angle);
+//Motor Control
+void leftMotor(int speed) {
+    if (speed >= 0) {
+        digitalWrite(AIN1, HIGH);
+        digitalWrite(AIN2, LOW);
+    } else {
+        digitalWrite(AIN1, LOW);
+        digitalWrite(AIN2, HIGH);
+        speed = -speed;
     }
+    ledcWrite(0, speed);
 }
 
-//Main Loop
-
-void loop(){
-// Handle incoming commands
-if(Serial.available()){
-    String cmd = Serial.readStringUntil('\n');
-    parseCommand(cmd);
+void rightMotor(int speed) {
+    if (speed >= 0) {
+        digitalWrite(BIN1, HIGH);
+        digitalWrite(BIN2, LOW);
+    } else {
+        digitalWrite(BIN1, LOW);
+        digitalWrite(BIN2, HIGH);
+        speed = -speed;
+    }
+    ledcWrite(1, speed);
 }
-//Send U.S.S
-long distance = readUltrasonic();
-Serial.printf("ULTRASONIC:%ld\n", distance);
-
-//Send IMU
-sendIMU();
-delay(50); // May need to adjust delay to handle update rates/ avoid flooding serial
 
 
+void loop() {
+
+    // Jetson commands get handled here
+    if (Serial2.available()) {
+        char cmd = Serial2.read();
+
+        if (cmd == 'F') { leftMotor(200); rightMotor(200); }
+        if (cmd == 'B') { leftMotor(-200); rightMotor(-200); }
+        if (cmd == 'L') { leftMotor(-150); rightMotor(150); }
+        if (cmd == 'R') { leftMotor(150); rightMotor(-150); }
+        if (cmd == 'S') { leftMotor(0); rightMotor(0); }
+    }
+
+    // Send ultrasonic
+    long distance = readUltrasonic();
+    Serial.printf("ULTRASONIC:%ld\n", distance);
+
+    // Send IMU
+    sendIMU();
+
+    delay(50);
 }

@@ -9,36 +9,29 @@ motion.py — High-level movement commands for ESP32 motor controller.
 """
 
 class MotionController:
-
     def __init__(self, serial_link):
         self.serial = serial_link
 
-    def forward(self, speed=150):
-        cmd = f"MOVE FWD {speed}"
-        self.serial.send(cmd)
+    def forward(self):
+        self.serial.send("F")
 
-    def backward(self, speed=150):
-        cmd = f"MOVE BACK {speed}"
-        self.serial.send(cmd)
+    def backward(self):
+        self.serial.send("B")
 
-    def turn_left(self, speed=150):
-        cmd = f"TURN LEFT {speed}"
-        self.serial.send(cmd)
+    def left(self):
+        self.serial.send("L")
 
-    def turn_right(self, speed=150):
-        cmd = f"TURN RIGHT {speed}"
-        self.serial.send(cmd)
+    def right(self):
+        self.serial.send("R")
 
     def stop(self):
-        self.serial.send("STOP")
-
+        self.serial.send("S")
 
     def servo(self, angle):
-        angle = max(0, min(180, angle))  # clamp
+        angle = max(0, min(180, angle))
         self.serial.send(f"SERVO {angle}")
 
     def execute(self, command):
-        """Allows Navigator to send arbitrary commands."""
         self.serial.send(command)
 
 
