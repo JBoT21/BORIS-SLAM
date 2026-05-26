@@ -10,9 +10,6 @@ Later, I will add:
 A*,DWA,Q-learning or Frontier exploration (oooooh)
 
 """
-"""
-navigation.py — High-level decision making for Jetson Nano SLAM robot.
-"""
 
 import math
 import random
@@ -23,7 +20,7 @@ class Navigator:
         self.localization = localization
         self.forward_speed = 120
         self.turn_speed = 100
-        
+
         # Exploration memory
         self.turn_direction = "LEFT"   # alternate to avoid loops
         self.visited = set()           # avoid revisiting same cells
