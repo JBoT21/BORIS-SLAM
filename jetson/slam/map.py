@@ -34,10 +34,12 @@ class OccupancyGrid:
     def in_bounds(self, x, y):
         return 0 <= x < self.size and 0 <= y < self.size
 
-    #Mark cells
+    # Marking functions
     def mark_free(self, x, y):
+        #Mark a cell as free only if it is not already occupied
         if self.in_bounds(x, y):
-            self.grid[x, y] = 1
+            if self.grid[x, y] != 2:     # So it don't overwrite obstacles
+                self.grid[x, y] = 1
 
     def mark_occupied(self, x, y):
         if self.in_bounds(x, y):
@@ -47,8 +49,16 @@ class OccupancyGrid:
     # Query
     def get(self, x, y):
         if self.in_bounds(x, y):
-            return self.grid[x, y]
+            return int(self.grid[x, y])
         return None
+
+    # Utility
+    def is_free(self, x, y):
+        return self.in_bounds(x, y) and self.grid[x, y] == 1
+    def is_unknown(self, x, y):
+        return self.in_bounds(x, y) and self.grid[x, y] == 0
+    def is_occupied(self, x, y):
+        return self.in_bounds(x, y) and self.grid[x, y] == 2
 
     # Save / Load
     def save(self, filename="map.npy"):
@@ -61,7 +71,3 @@ class OccupancyGrid:
             print(f"[OccupancyGrid] Loaded map from {filename}")
         else:
             print(f"[OccupancyGrid] No map found at {filename}")
-
-
-
-

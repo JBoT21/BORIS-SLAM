@@ -4,45 +4,64 @@ import time
 class SerialLink:
     """
     Handles UART communication between Jetson Nano and ESP32.
-    Provides:
-        - read_line()
-        - read_ultrasonic()
-        - read_imu()
-        - send()
-        - close()
+    Parsing format:
+        - ULTRASONIC:<cm>
+        - IMU:<yaw>,<pitch>,<roll>
     """
 
     def __init__(self, port="/dev/ttyUSB0", baud=115200, timeout=0.1):
         self.ser = serial.Serial(port, baud, timeout=timeout)
-        time.sleep(2)  # allow ESP32 to reset
+        time.sleep(2)  # allows the ESP32 to boot
+
+        self.last_ultrasonic = None
+        self.last_imu = None
+
         print(f"[SerialLink] Connected on {port} @ {baud}")
 
+    # Low-level read
     def read_line(self):
         try:
-            line = self.ser.readline().decode(errors="ignore").strip()
-            if line:
-                return line
+            raw = self.ser.readline().decode(errors="ignore").strip()
+            if not raw:
+                return None
+            
+            # Filter ESP32 boot garbage
+            if "rst:" in raw or "boot:" in raw:
+                return None
+            return raw
+
         except Exception as e:
             print(f"[SerialLink] Read error: {e}")
-        return None
+            return None
 
-    def read_ultrasonic(self, line):
-        if line and line.startswith("ULTRASONIC:"):
+    # Parse a single message
+    def _parse_message(self, msg):
+        if msg.startswith("ULTRASONIC:"):
             try:
-                return int(line.split(":")[1])
+                self.last_ultrasonic = int(msg.split(":")[1])
             except:
-                return None
-        return None
-
-    def read_imu(self, line):
-        if line and line.startswith("IMU:"):
+                pass
+        elif msg.startswith("IMU:"):
             try:
-                parts = line.split(":")[1].split(",")
+                parts = msg.split(":")[1].split(",")
                 yaw, pitch, roll = map(float, parts)
-                return (yaw, pitch, roll)
+                self.last_imu = (yaw, pitch, roll)
             except:
-                return None
-        return None
+                pass
+
+    # Read and parse all available sensor messages
+    def read_sensors(self):
+        line = self.read_line()
+        if not line:
+            return self.last_ultrasonic, self.last_imu
+
+        # Handle multiple messages in one line (it happens :/)
+        for msg in line.split("\n"):
+            msg = msg.strip()
+            if msg:
+                self._parse_message(msg)
+
+        return self.last_ultrasonic, self.last_imu
 
     def send(self, command):
         try:

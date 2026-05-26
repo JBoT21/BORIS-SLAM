@@ -40,8 +40,8 @@ float yaw = 0;
 unsigned long lastTime = 0;
 
 void setup() {
-    Serial.begin(115200);
-    Serial2.begin(115200, SERIAL_8N1, 16, 17);
+    Serial.begin(115200); //Used to communicate w/ ESP32 (Sensor data output)
+    Serial2.begin(115200, SERIAL_8N1, 16, 17); //Used to communicate w/ Jetson (Command input)
 
     // Ultrasonic
     pinMode(trigPin, OUTPUT);

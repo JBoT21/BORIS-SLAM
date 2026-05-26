@@ -15,62 +15,24 @@ sensors.py — Parse raw sensor strings into structured data.
 """
 
 from collections import deque
-import statistics
+
 
 
 class SensorData:
-    """Container for parsed sensor readings."""
-    def __init__(self):
-        self.ultrasonic = None
-        self.imu = None   # (yaw, pitch, roll)
+    def __init__(self, ultrasonic=None, imu=None):
+        self.ultrasonic = ultrasonic
+        self.imu = imu
 
 
 class SensorParser:
-  
-    def __init__(self, smooth_window=5):
-        self.smooth_window = smooth_window
-        self.ultra_history = deque(maxlen=smooth_window)
+    """
+    Thin wrapper around SerialLink.
+    Converts (ultra, imu) into a SensorData object.
+    """
 
-    def parse(self, raw):
-        data = SensorData()
+    def __init__(self, serial_link):
+        self.serial = serial_link
 
-        if raw is None or raw == "":
-            return data
-
-        if raw.startswith("ULTRASONIC:"):
-            data.ultrasonic = self.parse_ultrasonic(raw)
-
-        elif raw.startswith("IMU:"):
-            data.imu = self._parse_imu(raw)
-
-        else:
-            print(f"[SensorParser] Unknown sensor string: {raw}")
-
-        return data
-
-    def parse_ultrasonic(self, raw):
-        try:
-            dist = int(raw.split(":")[1])
-
-            # Value valudation
-            if dist < 0 or dist > 500:
-                return None
-
-            # Add to history for smoothing
-            self.ultra_history.append(dist)
-            # Return smoothed value
-            return int(statistics.mean(self.ultra_history))
-
-        except Exception:
-            print(f"[SensorParser] Invalid ultrasonic reading: {raw}")
-            return None
-        
-    def _parse_imu(self, raw):
-        try:
-            parts = raw.split(":")[1].split(",")
-            yaw, pitch, roll = map(float, parts)
-            return (yaw, pitch, roll)
-
-        except Exception:
-            print(f"[SensorParser] Invalid IMU reading: {raw}")
-            return None
+    def read(self):
+        ultra, imu = self.serial.read_sensors()
+        return SensorData(ultrasonic=ultra, imu=imu)
