@@ -2,10 +2,8 @@
 Responsibilities:
 
 High-level movement commands sent to the ESP32.
-This module abstracts away the serial commands.
-"""
-"""
-motion.py — High-level movement commands for ESP32 motor controller.
+This module abstracts away the serial commands
+
 """
 
 class MotionController:
