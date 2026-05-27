@@ -65,9 +65,6 @@ void setup() {
     ledcSetup(0, 20000, 8);
     ledcSetup(1, 20000, 8);
 
-    // Servo
-    scanServo.attach(servoPin);
-
     // IMU
     Wire.begin();
     imu.initialize();
