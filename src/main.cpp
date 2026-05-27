@@ -2,6 +2,11 @@
 #include <Wire.h>
 #include <Servo.h>
 #include "MPU6050.h"
+#include "esp32-hal-ledc.h"
+#include "esp32-hal-gpio.h"
+#include "esp32-hal-i2c.h"
+#include <Adafruit_MMA8451.h>
+#include <Adafruit_Sensor.h>
 
 //Global Variables
 float yaw = 0;
@@ -10,11 +15,6 @@ unsigned long lastTime = 0;
 // Hardware Pin Definitions (Adjust ESP32 pins as needed)
 //Note: GPIO 6-11 are reserved for flash memory on most ESP32 boards
 //(So dont use those)
-
-#include <Arduino.h>
-#include <Wire.h>
-#include <Servo.h>
-#include "MPU6050.h"
 
 //Pin definitions
 const int trigPin = 4;
@@ -29,12 +29,17 @@ const int echoPin = 15;
 #define BIN2 5
 #define STBY 2
 
+// MMA8451 Accelerometer Pins (I2C)
+#define SDA_PIN 21
+#define SCL_PIN 22
+
 // Servo
 const int servoPin = 14;
 
 //Global objecrs
 Servo scanServo;
 MPU6050 imu;
+Adafruit_MMA8451 mma = Adafruit_MMA8451();
 
 float yaw = 0;
 unsigned long lastTime = 0;
@@ -69,6 +74,19 @@ void setup() {
     imu.initialize();
 
     lastTime = micros();
+
+    // MMA8451
+    if (! mma.begin()) {
+    Serial.println("Couldnt start");
+    while (1);
+    }
+     Serial.println("MMA8451 found!");
+  
+    mma.setRange(MMA8451_RANGE_2_G);
+  
+    Serial.print("Range = "); Serial.print(2 << mma.getRange());  
+    Serial.println("G");
+  
 }
 
 //Ultrasonic 
@@ -142,5 +160,9 @@ void loop() {
     // Send IMU
     sendIMU();
 
+    // Send accelerometer
+    mma.read();
+    Serial.printf("MMA8451:%0.2f,%0.2f,%0.2f\n", mma.x, mma.y, mma.z);
+    
     delay(50);
 }
