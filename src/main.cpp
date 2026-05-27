@@ -37,7 +37,6 @@ const int echoPin = 15;
 const int servoPin = 14;
 
 //Global objecrs
-Servo scanServo;
 MPU6050 imu;
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
 

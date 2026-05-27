@@ -30,11 +30,6 @@ class MotionController:
     def stop(self):
         self._send("S", 0)
 
-    # Servo control
-    def servo(self, angle):
-        angle = max(0, min(180, angle))
-        self.serial.send(f"SERVO {angle}")
-
     # Execute arbitrary command (Navigator uses this)
     def execute(self, command, speed=120):
         if command not in self.valid_commands:
