@@ -9,10 +9,6 @@
 #include <Adafruit_Sensor.h>
 
 
-//Global Variables
-float yaw = 0;
-unsigned long lastTime = 0;
-
 // Hardware Pin Definitions (Adjust ESP32 pins as needed)
 //Note: GPIO 6-11 are reserved for flash memory on most ESP32 boards
 //(So dont use those)
@@ -31,11 +27,8 @@ const int echoPin = 15;
 #define STBY 2
 
 // MMA8451 Accelerometer Pins (I2C)
-#define SDA_PIN 21
-#define SCL_PIN 22
-
-// Servo
-const int servoPin = 14;
+#define SDA_PIN 33
+#define SCL_PIN 32
 
 //Global objecrs
 MPU6050 imu;
@@ -67,7 +60,7 @@ void setup() {
     ledcAttachPin(PWMB, 1);
 
     // IMU
-    Wire.begin();
+    Wire.begin(SDA_PIN, SCL_PIN);
     imu.initialize();
 
     lastTime = micros();
@@ -159,7 +152,7 @@ void loop() {
 
     // Send accelerometer
     mma.read();
-    Serial.printf("MMA8451:%0.2f,%0.2f,%0.2f\n", mma.x, mma.y, mma.z);
+    Serial.printf("MMA8451:%0.2f,%0.2f,%0.2f\n", mma.x_g, mma.y_g, mma.z_g);
     
     delay(50);
 }
