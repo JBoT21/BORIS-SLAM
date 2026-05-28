@@ -8,6 +8,7 @@
 #include <Adafruit_MMA8451.h>
 #include <Adafruit_Sensor.h>
 
+
 //Global Variables
 float yaw = 0;
 unsigned long lastTime = 0;
@@ -60,10 +61,10 @@ void setup() {
     digitalWrite(STBY, HIGH);
 
     // PWM channels
+    ledcSetup(0, 1000, 8);
     ledcAttachPin(PWMA, 0);
+    ledcSetup(1, 1000, 8);
     ledcAttachPin(PWMB, 1);
-    ledcSetup(0, 20000, 8);
-    ledcSetup(1, 20000, 8);
 
     // IMU
     Wire.begin();
