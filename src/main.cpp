@@ -1,10 +1,9 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Servo.h>
-#include "MPU6050.h"
+#include <MPU6050.h>
 #include "esp32-hal-ledc.h"
 #include "esp32-hal-gpio.h"
-#include "esp32-hal-i2c.h"
 #include <Adafruit_MMA8451.h>
 #include <Adafruit_Sensor.h>
 
@@ -31,7 +30,7 @@ const int echoPin = 15;
 #define SCL_PIN 32
 
 //Global objecrs
-MPU6050 imu;
+MPU6050 imu(Wire);
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
 
 float yaw = 0;
@@ -64,14 +63,11 @@ void setup() {
     Serial.println("Motors Initialized");
 
     // IMU
-    Wire.begin(SDA_PIN, SCL_PIN);
-    imu.initialize();
-    lastTime = micros();
-    Serial.println("IMU Initialized");
+    initIMU();
 
     // MMA8451
     if (! mma.begin()) {
-    Serial.println("Couldnt start");
+    Serial.println("Couldnt start MMA8451");
     while (1);
     }
      Serial.println("MMA8451 found!");
@@ -96,10 +92,26 @@ long readUltrasonic() {
 }
 
 //IMU
+
+void initIMU() {
+    Serial.println("Initializing IMU...");
+    Wire.begin(SDA_PIN, SCL_PIN);
+    Serial.println("I2C Initialized");
+    if (!imu.begin()) {
+        Serial.println("Failed to initialize MPU6050!");
+        while (1);  // Stop here if IMU not found
+    }
+    imu.calcGyroOffsets(true);   // Auto-calibrate gyro
+    Serial.println("MPU6050 Initialized");
+    lastTime = micros();
+    Serial.println("IMU Ready");
+}
+
 void sendIMU() {
-    float gyroZ = imu.getRotationZ() / 131.0;
+    imu.update();  // Refresh sensor data
+    float gyroZ = imu.getGyroZ();   //It's in deg/sec
     unsigned long now = micros();
-    float dt = (now - lastTime) / 1000000.0;
+    float dt = (now - lastTime) / 1e6;
     lastTime = now;
     yaw += gyroZ * dt;
     if (yaw < 0) yaw += 360;
