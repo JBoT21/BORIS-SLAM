@@ -40,10 +40,12 @@ unsigned long lastTime = 0;
 void setup() {
     Serial.begin(115200); //Used to communicate w/ ESP32 (Sensor data output)
     Serial2.begin(115200, SERIAL_8N1, 16, 17); //Used to communicate w/ Jetson (Command input)
+    Serial.println("Serial Initialized");
 
     // Ultrasonic
     pinMode(trigPin, OUTPUT);
     pinMode(echoPin, INPUT);
+    Serial.println("Ultrasonic Initialized");
 
     // Motor pins
     pinMode(AIN1, OUTPUT);
@@ -52,18 +54,20 @@ void setup() {
     pinMode(BIN2, OUTPUT);
     pinMode(STBY, OUTPUT);
     digitalWrite(STBY, HIGH);
+    
 
     // PWM channels
     ledcSetup(0, 1000, 8);
     ledcAttachPin(PWMA, 0);
     ledcSetup(1, 1000, 8);
     ledcAttachPin(PWMB, 1);
+    Serial.println("Motors Initialized");
 
     // IMU
     Wire.begin(SDA_PIN, SCL_PIN);
     imu.initialize();
-
     lastTime = micros();
+    Serial.println("IMU Initialized");
 
     // MMA8451
     if (! mma.begin()) {
