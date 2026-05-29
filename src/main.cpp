@@ -36,6 +36,33 @@ Adafruit_MMA8451 mma = Adafruit_MMA8451();
 float yaw = 0;
 unsigned long lastTime = 0;
 
+void initIMU() {
+    Serial.println("Initializing IMU...");
+    Wire.begin(SDA_PIN, SCL_PIN);
+    Serial.println("I2C Initialized");
+    if (!mpu.begin()) {
+        Serial.println("Failed to initialize MPU6050!");
+        while (1);  // Stop here if IMU not found
+    }
+    mpu.CalibrateGyro(true);   // Auto-calibrate gyro
+    Serial.println("MPU6050 Initialized");
+    lastTime = micros();
+    Serial.println("IMU Ready");
+}
+
+void sendIMU() {
+    mpu.update();  // Refresh sensor data
+    float gyroZ = mpu.getZGyroOffset();   //It's in deg/sec
+    unsigned long now = micros();
+    float dt = (now - lastTime) / 1e6;
+    lastTime = now;
+    yaw += gyroZ * dt;
+    if (yaw < 0) yaw += 360;
+    if (yaw >= 360) yaw -= 360;
+
+    Serial.printf("IMU:%0.2f,0.00,0.00\n", yaw);
+}
+
 void setup() {
     Serial.begin(115200); //Used to communicate w/ ESP32 (Sensor data output)
     Serial2.begin(115200, SERIAL_8N1, 16, 17); //Used to communicate w/ Jetson (Command input)
@@ -89,35 +116,6 @@ long readUltrasonic() {
 
     long duration = pulseIn(echoPin, HIGH, 20000);
     return duration * 0.034 / 2;
-}
-
-//IMU
-
-void initIMU() {
-    Serial.println("Initializing IMU...");
-    Wire.begin(SDA_PIN, SCL_PIN);
-    Serial.println("I2C Initialized");
-    if (!mpu.begin()) {
-        Serial.println("Failed to initialize MPU6050!");
-        while (1);  // Stop here if IMU not found
-    }
-    mpu.CalibrateGyro(true);   // Auto-calibrate gyro
-    Serial.println("MPU6050 Initialized");
-    lastTime = micros();
-    Serial.println("IMU Ready");
-}
-
-void sendIMU() {
-    mpu.update();  // Refresh sensor data
-    float gyroZ = mpu.getZGyroOffset();   //It's in deg/sec
-    unsigned long now = micros();
-    float dt = (now - lastTime) / 1e6;
-    lastTime = now;
-    yaw += gyroZ * dt;
-    if (yaw < 0) yaw += 360;
-    if (yaw >= 360) yaw -= 360;
-
-    Serial.printf("IMU:%0.2f,0.00,0.00\n", yaw);
 }
 
 //Motor Control
