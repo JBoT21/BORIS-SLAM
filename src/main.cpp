@@ -1,7 +1,8 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Servo.h>
-#include <MPU6050.h>
+//#include <MPU6050.h>
+#include "MPU6050_fix.h"
 #include "esp32-hal-ledc.h"
 #include "esp32-hal-gpio.h"
 #include <Adafruit_MMA8451.h>
