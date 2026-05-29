@@ -30,7 +30,7 @@ const int echoPin = 15;
 #define SCL_PIN 32
 
 //Global objecrs
-MPU6050 imu(Wire);
+MPU6050 mpu(Wire);
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
 
 float yaw = 0;
@@ -97,19 +97,19 @@ void initIMU() {
     Serial.println("Initializing IMU...");
     Wire.begin(SDA_PIN, SCL_PIN);
     Serial.println("I2C Initialized");
-    if (!imu.begin()) {
+    if (!mpu.begin()) {
         Serial.println("Failed to initialize MPU6050!");
         while (1);  // Stop here if IMU not found
     }
-    imu.calcGyroOffsets(true);   // Auto-calibrate gyro
+    mpu.CalibrateGyro(true);   // Auto-calibrate gyro
     Serial.println("MPU6050 Initialized");
     lastTime = micros();
     Serial.println("IMU Ready");
 }
 
 void sendIMU() {
-    imu.update();  // Refresh sensor data
-    float gyroZ = imu.getGyroZ();   //It's in deg/sec
+    mpu.update();  // Refresh sensor data
+    float gyroZ = mpu.getZGyroOffset();   //It's in deg/sec
     unsigned long now = micros();
     float dt = (now - lastTime) / 1e6;
     lastTime = now;
