@@ -1,8 +1,9 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Servo.h>
-//#include <MPU6050.h>
-#include "MPU6050_fix.h"
+#include <MPU6050.h>
+#include "I2Cdev.h"
+//#include "MPU6050_fix.h"
 #include "esp32-hal-ledc.h"
 #include "esp32-hal-gpio.h"
 #include <Adafruit_MMA8451.h>
@@ -31,7 +32,7 @@ const int echoPin = 15;
 #define SCL_PIN 32
 
 //Global objecrs
-MPU6050 mpu(Wire);
+MPU6050 mpu();
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
 
 float yaw = 0;
@@ -41,7 +42,8 @@ void initIMU() {
     Serial.println("Initializing IMU...");
     Wire.begin(SDA_PIN, SCL_PIN);
     Serial.println("I2C Initialized");
-    if (!mpu.begin()) {
+    mpu.initialize();
+    if (!mpu.testConnection()) {
         Serial.println("Failed to initialize MPU6050!");
         while (1);  // Stop here if IMU not found
     }
