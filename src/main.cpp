@@ -29,11 +29,10 @@ const int echoPin = 15;
 #define SCL_PIN 32
 
 // MPU6050 I2C Address
-#define MPU6050_ADDR 0x68  // Default address
+#define MPU6050_ADDR 0x68  // Default address (0x69 if AD0 pin is high)
 
 // Global objects
 MPU6050 mpu(MPU6050_ADDR, &Wire);
-
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
 
 float yaw = 0;
@@ -72,8 +71,7 @@ void initIMU() {
         Serial.println("MPU6050 connection test failed!");
         while (1);
     }
-    
-    Serial.println("MPU6050 Initialized and connected");
+    Serial.println("MPU6050 Initialized!");
     
     // Set up the accelerometer and gyro
     mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_250);  // 250 deg/sec
@@ -90,7 +88,7 @@ void sendIMU() {
     float gyroZ_dps = gz / 131.0;
     
     unsigned long now = micros();
-    float dt = (now - lastTime) / 1e6;  // Convert to seconds
+    float dt = (now - lastTime) / 1e6;  // Converts to seconds
     lastTime = now;
     
     // Integrate gyro to get yaw angle
