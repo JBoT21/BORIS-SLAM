@@ -151,7 +151,8 @@ long readUltrasonic() {
     delayMicroseconds(10);
     digitalWrite(trigPin, LOW);
 
-    long duration = pulseIn(echoPin, HIGH, 20000);
+    long duration = pulseIn(echoPin, HIGH, 40000);
+    Serial.printf("ULTRA_RAW:%ld\n", duration);
     return duration * 0.034 / 2;  // Convert to cm
 }
 
@@ -221,7 +222,7 @@ void loop() {
     // Send ultrasonic data
     long distance = readUltrasonic();
     Serial.printf("ULTRASONIC:%ld\n", distance);
-    Serial.printf("\n"); // Blank line for better readability
+    Serial.printf("\n");// Blank line for better readability
 
     // Send IMU (gyro-based yaw)
     sendIMU();
