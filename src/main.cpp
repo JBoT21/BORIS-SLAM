@@ -16,13 +16,13 @@ const int trigPin = 4;
 const int echoPin = 15;
 
 // TB6612 Motor Driver Pins
-#define PWMA 18
-#define AIN1 23
-#define AIN2 22
-#define PWMB 19
+#define PWMA 5 
+#define AIN1 19
+#define AIN2 18 
+#define PWMB 23
 #define BIN1 21
-#define BIN2 5
-#define STBY 2
+#define BIN2 22
+//#define STBY 2
 
 // MMA8451 Accelerometer Pins (I2C)
 #define SDA_PIN 33
@@ -116,8 +116,8 @@ void setup() {
     pinMode(AIN2, OUTPUT);
     pinMode(BIN1, OUTPUT);
     pinMode(BIN2, OUTPUT);
-    pinMode(STBY, OUTPUT);
-    digitalWrite(STBY, HIGH);
+    //pinMode(STBY, OUTPUT);
+    //digitalWrite(STBY, HIGH);
     
     // PWM channels for motors
     ledcSetup(0, 1000, 8);
