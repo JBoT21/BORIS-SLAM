@@ -51,7 +51,7 @@ class Navigator:
 
  
     def _cells_ahead(self, x, y, heading):
-        """Return grid cells 1–3 steps ahead."""
+        """Return grid cells 1-3 steps ahead."""
         cells = []
         rad = math.radians(heading)
 
