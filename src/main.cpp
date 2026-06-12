@@ -4,7 +4,7 @@
 #include "esp32-hal-ledc.h"
 #include "MPU6050.h"
 #include "esp32-hal-gpio.h"
-#include <Adafruit_MMA8451.h>
+//#include <Adafruit_MMA8451.h>
 #include <Adafruit_Sensor.h>
 
 // Hardware Pin Definitions (Adjust ESP32 pins as needed)
@@ -24,16 +24,15 @@ const int echoPin = 15;
 #define BIN2 22
 //#define STBY 2
 
-// MMA8451 Accelerometer Pins (I2C)
+//MMA8451 Accelerometer Pins (I2C)
 #define SDA_PIN 33
 #define SCL_PIN 32
 
 // MPU6050 I2C Address
 #define MPU6050_ADDR 0x68  // Default address (0x69 if AD0 pin is high)
-
 // Global objects
 MPU6050 mpu(MPU6050_ADDR, &Wire);
-Adafruit_MMA8451 mma = Adafruit_MMA8451();
+//Adafruit_MMA8451 mma = Adafruit_MMA8451();
 
 float yaw = 0;
 unsigned long lastTime = 0;
@@ -133,7 +132,7 @@ void setup() {
     // IMU
     initIMU();
 
-    // MMA8451 Accelerometer
+    /* MMA8451 Accelerometer
     if (!mma.begin()) {
         Serial.println("Couldn't start MMA8451");
         while (1);
@@ -145,6 +144,8 @@ void setup() {
     Serial.print("Range = ");
     Serial.print(2 << mma.getRange());
     Serial.println("G");
+}
+*/
 }
 
 // Ultrasonic distance reading
@@ -232,8 +233,8 @@ void loop() {
     sendIMU();
 
     // Send accelerometer data
-    mma.read();
-    Serial.printf("MMA8451:%0.2f,%0.2f,%0.2f\n", mma.x_g, mma.y_g, mma.z_g);
+   // mma.read();
+    //Serial.printf("MMA8451:%0.2f,%0.2f,%0.2f\n", mma.x_g, mma.y_g, mma.z_g);
     
     delay(50);
 }
