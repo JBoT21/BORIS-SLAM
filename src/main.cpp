@@ -82,6 +82,10 @@ void initIMU() {
 }
 
 void sendIMU() {
+
+    /*
+    TODO: IMPLEMENT THE YAW FILTER ADAM SENT, CUZ RN ITS BAD
+    */
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
     
     // Convert raw gyro value to degrees per second (250 deg/sec range)

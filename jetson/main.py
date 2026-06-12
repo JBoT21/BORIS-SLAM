@@ -34,7 +34,7 @@ from slam.nav import Navigator
 from slam.visualize import Visualizer   # future development
 
 def main():
-    print("Starting Jetson Nano + ESP32 SLAM System!!!!å")
+    print("Starting Jetson Nano + ESP32 SLAM System!!!!")
     print("Initializing hardware interfaces...")
 
     serial = SerialLink(port="/dev/ttyUSB0", baud=115200)
