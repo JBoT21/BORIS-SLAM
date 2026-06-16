@@ -121,7 +121,6 @@ void sendIMU() {
     gyroY_dps = gy / 131.0;
     gyroZ_dps = gz / 131.0;
     
-    
     // Integrate gyro to get angles
     pitch += gyroX_dps*dt;
     roll += gyroY_dps*dt;
