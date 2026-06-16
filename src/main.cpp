@@ -96,7 +96,6 @@ void sendIMU() {
     /*
     TODO: IMPLEMENT THE YAW FILTER ADAM SENT, CUZ RN ITS BAD
     */
-
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
     
     /* Convert and integrate 3-axis acceleration to get linear position change*/
