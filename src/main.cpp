@@ -43,7 +43,14 @@ unsigned long lastTime = 0;
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
 
+// MPU 6050 calibrated offsets
+long ax_offset = 0, ay_offset = 0, az_offset = 0;
+long gx_offset = 0, gy_offset = 0, gz_offset = 0;
+
 void initIMU() {
+    int i;
+    long sumX, sumY, sumZ, sumGX, sumGY, sumGZ;
+
     Serial.println("Initializing IMU...");
     Wire.begin(SDA_PIN, SCL_PIN);
     Serial.println("I2C Initialized");
@@ -77,7 +84,28 @@ void initIMU() {
     // Set up the accelerometer and gyro
     mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_250);  // 250 deg/sec
     mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2);   // 2g
-    
+
+    /*Calibrate Accelerometer*/
+    /*Device must be sitting still during this time*/
+    for (i=0; i<500; i++)
+    {
+        mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+        sumX += ax;
+        sumY += ay;
+        sumZ += az;
+        sumGX += gx;
+        sumGY += gy;
+        sumGZ += gz;
+    }
+
+    ax_offset = sumX / 500;
+    ay_offset = sumY / 500;
+    az_offset = sumZ / 500;
+    gx_offset = sumGX / 500;
+    gy_offset = sumGY / 500;
+    gz_offset = sumGZ / 500;
+
+
     lastTime = micros();
     Serial.println("IMU Ready");
 }
@@ -97,6 +125,14 @@ void sendIMU() {
     TODO: IMPLEMENT THE YAW FILTER ADAM SENT, CUZ RN ITS BAD
     */
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+    /* Apply calibrated offsets*/
+    ax -= ax_offset;
+    ay -= ay_offset;
+    az -= az_offset;
+    gx -= gx_offset;
+    gy -= gy_offset;
+    gz -= gz_offset;
     
     /* Convert and integrate 3-axis acceleration to get linear position change*/
     x_mps2 = (ax / 16384.0) * 9.8; //convert to m/s^2
