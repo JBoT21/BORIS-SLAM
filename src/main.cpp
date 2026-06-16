@@ -170,8 +170,9 @@ void sendIMU() {
 
     //Serial.printf("IMU:%0.2f,0.00,0.00\n", yaw);
     Serial.printf("IMU\n");
-    Serial.printf("X: %0.2fm, Y: %0.2fm, Z: %0.2fm\n", x, y, z);
-    Serial.printf("Pitch: %0.2f, Roll: %0.2f, Yaw: %0.2f\n", pitch, roll, yaw);
+    // Serial.printf("X: %0.2fm, Y: %0.2fm, Z: %0.2fm\n", x, y, z);
+    // Serial.printf("Pitch: %0.2f, Roll: %0.2f, Yaw: %0.2f\n", pitch, roll, yaw);
+    Serial.printf("RAWX: %d, RAWY: %d, RAWZ: %d\n", ax, ay, az);
 }
 
 void setup() {
