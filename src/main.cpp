@@ -83,7 +83,6 @@ void initIMU() {
 }
 
 void sendIMU() {
-
     float x_mps2, y_mps2, z_mps2; //linear accelerations in mps
     float xOff, yOff, zOff; //linear offsets from last position.
     float gyroX_dps, gyroY_dps, gyroZ_dps;
