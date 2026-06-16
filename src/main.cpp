@@ -34,7 +34,9 @@ const int echoPin = 15;
 MPU6050 mpu(MPU6050_ADDR, &Wire);
 //Adafruit_MMA8451 mma = Adafruit_MMA8451();
 
-float yaw = 0;
+float pitch=0, roll=0, yaw = 0; //gyroscope offsets from start
+float x=0, y=0, z=0; //accelerometer calculated position from start
+float x_vel=0, y_vel=0, z_vel=0; //linear velocity in m/s from mpu
 unsigned long lastTime = 0;
 
 // MPU6050 raw data storage
@@ -82,26 +84,61 @@ void initIMU() {
 
 void sendIMU() {
 
+    float x_mps2, y_mps2, z_mps2; //linear accelerations in mps
+    float xOff, yOff, zOff; //linear offsets from last position.
+    float gyroX_dps, gyroY_dps, gyroZ_dps;
+    float dt;
+
+    /* Timekeeping */
+    unsigned long now = micros();
+    dt = (now - lastTime) / 1e6;  // Converts to seconds
+    lastTime = now;
+
     /*
     TODO: IMPLEMENT THE YAW FILTER ADAM SENT, CUZ RN ITS BAD
     */
+
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
     
-    // Convert raw gyro value to degrees per second (250 deg/sec range)
-    float gyroZ_dps = gz / 131.0;
+    /* Convert and integrate 3-axis acceleration to get linear position change*/
+    x_mps2 = (ax / 16384.0) * 9.8; //convert to m/s^2
+    y_mps2 = (ay / 16384.0) * 9.8;
+    z_mps2 = (az / 16384.0) * 9.8;
+    x_vel += x_mps2*dt;
+    y_vel += y_mps2*dt;
+    z_vel += z_mps2*dt;
+    xOff = x_vel*dt;
+    yOff = y_vel*dt;
+    zOff = z_vel*dt;
+
+    /* Compute total X,Y,Z positions*/
+    x += xOff;
+    y += yOff;
+    z += zOff;
+
+    // Convert raw gyro values to degrees per second (250 deg/sec range)
+    gyroX_dps = gx / 131.0;
+    gyroY_dps = gy / 131.0;
+    gyroZ_dps = gz / 131.0;
     
-    unsigned long now = micros();
-    float dt = (now - lastTime) / 1e6;  // Converts to seconds
-    lastTime = now;
     
-    // Integrate gyro to get yaw angle
+    // Integrate gyro to get angles
+    pitch += gyroX_dps*dt;
+    roll += gyroY_dps*dt;
     yaw += gyroZ_dps * dt;
     
     // Normalize yaw to 0-360
-    if (yaw < 0) yaw += 360;
-    if (yaw >= 360) yaw -= 360;
+    while (pitch < 0) pitch += 360;
+    while (pitch >= 360) pitch -= 360;
+    while (roll < 0) roll += 360;
+    while (roll >= 360) roll -= 360;
+    while (yaw < 0) yaw += 360;
+    while (yaw >= 360) yaw -= 360;
 
-    Serial.printf("IMU:%0.2f,0.00,0.00\n", yaw);
+    //Serial.printf("IMU:%0.2f,0.00,0.00\n", yaw);
+    Serial.printf("IMU\n");
+    Serial.printf("X: %0.2fm, Y: %0.2fm, Z: %0.2fm\n", x, y, z);
+    Serial.printf("Pitch: %0.2f, Roll: %0.2f, Yaw: %0.2f\n", pitch, roll, yaw);
 }
 
 void setup() {
