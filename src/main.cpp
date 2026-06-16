@@ -104,7 +104,7 @@ void sendIMU() {
     z_mps2 = (az / 16384.0) * 9.8;
     x_vel += x_mps2*dt;
     y_vel += y_mps2*dt;
-    z_vel += z_mps2*dt;
+    z_vel += z_mps2*dt; 
     xOff = x_vel*dt;
     yOff = y_vel*dt;
     zOff = z_vel*dt;
