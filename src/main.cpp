@@ -7,7 +7,7 @@
 //#include <Adafruit_MMA8451.h>
 #include <Adafruit_Sensor.h>
 
-#define NUM_STATIONARY_SAMPLES 10
+#define NUM_STATIONARY_SAMPLES 5
 #define ACC_THRESHOLD 0.1  // Threshold in mps^2 to consider the robot as moving or stationary
 #define GYRO_THRESHOLD 3   // Threshold in deg/sec to consider the robot as moving or stationary
 
@@ -134,12 +134,9 @@ void sendIMU() {
 
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
     
-    /* Use old values for gravity compensation (may need to use new values) */
-    gravityX = -sin(roll * DEG_TO_RAD) * 9.8;
-    gravityY = sin(pitch * DEG_TO_RAD) * cos(roll * DEG_TO_RAD) * 9.8;
-    gravityZ = cos(pitch * DEG_TO_RAD) * cos(roll * DEG_TO_RAD) * 9.8;
+    
 
-    /* Apply calibrated offsets*/
+    /* Apply calibrated offsets to remove per-axis bias*/
     ax -= ax_offset;
     ay -= ay_offset;
     az -= az_offset;
@@ -148,9 +145,9 @@ void sendIMU() {
     gz -= gz_offset;
     
     /* Convert 3-axis acceleration to m/s^2*/
-    x_mps2 = ax / 16384.0 * 9.8 - gravityX;
-    y_mps2 = ay / 16384.0 * 9.8 - gravityY;
-    z_mps2 = az / 16384.0 * 9.8 - gravityZ;
+    x_mps2 = (ax / 16384.0 * 9.8);
+    y_mps2 = (ay / 16384.0 * 9.8);
+    z_mps2 = (az / 16384.0 * 9.8);
 
     // Convert raw gyro values to degrees per second (250 deg/sec range)
     gyroX_dps = gx / 131.0;
@@ -179,6 +176,19 @@ void sendIMU() {
     }
     else
     {
+        // Integrate gyro to get angles
+        pitch += gyroX_dps*dt;
+        roll += gyroY_dps*dt;
+        yaw += gyroZ_dps * dt;
+
+        /* Adjust for gravity based on current orientation*/
+        gravityX = -sin(roll * DEG_TO_RAD) * 9.8;
+        gravityY = sin(pitch * DEG_TO_RAD) * cos(roll * DEG_TO_RAD) * 9.8;
+        gravityZ = cos(roll * DEG_TO_RAD) * cos(pitch * DEG_TO_RAD) * 9.8;
+        x_mps2 -= gravityX;
+        y_mps2 -= gravityY;
+        z_mps2 -= gravityZ;
+
         /*Only integrate velocity if moving*/
         x_vel += x_mps2 * dt;
         y_vel += y_mps2 * dt;
@@ -194,10 +204,6 @@ void sendIMU() {
     y += yOff;
     z += zOff;
     
-    // Integrate gyro to get angles
-    pitch += gyroX_dps*dt;
-    roll += gyroY_dps*dt;
-    yaw += gyroZ_dps * dt;
     
     // Normalize yaw to 0-360
     while (pitch < 0) pitch += 360;
