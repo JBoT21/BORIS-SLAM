@@ -7,6 +7,10 @@
 //#include <Adafruit_MMA8451.h>
 #include <Adafruit_Sensor.h>
 
+#define NUM_STATIONARY_SAMPLES 10
+#define ACC_THRESHOLD 0.1  // Threshold in mps^2 to consider the robot as moving or stationary
+#define GYRO_THRESHOLD 5   // Threshold in deg/sec to consider the robot as moving or stationary
+
 // Hardware Pin Definitions (Adjust ESP32 pins as needed)
 // Note: GPIO 6-11 are reserved for flash memory on most ESP32 boards
 // (So don't use those)
@@ -37,6 +41,7 @@ MPU6050 mpu(MPU6050_ADDR, &Wire);
 float pitch=0, roll=0, yaw = 0; //gyroscope offsets from start
 float x=0, y=0, z=0; //accelerometer calculated position from start
 float x_vel=0, y_vel=0, z_vel=0; //linear velocity in m/s from mpu
+int stationary_counter = 0; // Counter for how many consecutive samples indicate stationary
 unsigned long lastTime = 0;
 
 // MPU6050 raw data storage
@@ -49,7 +54,7 @@ long gx_offset = 0, gy_offset = 0, gz_offset = 0;
 
 void initIMU() {
     int i;
-    long sumX, sumY, sumZ, sumGX, sumGY, sumGZ;
+    long sumX=0, sumY=0, sumZ=0, sumGX=0, sumGY=0, sumGZ=0;
 
     Serial.println("Initializing IMU...");
     Wire.begin(SDA_PIN, SCL_PIN);
@@ -74,6 +79,7 @@ void initIMU() {
     }
 
     mpu.initialize();
+    mpu.setDLPFMode(4);
     
     if (!mpu.testConnection()) {
         Serial.println("MPU6050 connection test failed!");
@@ -87,23 +93,24 @@ void initIMU() {
 
     /*Calibrate Accelerometer*/
     /*Device must be sitting still during this time*/
-    for (i=0; i<500; i++)
+    for (i=0; i<200; i++)
     {
         mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
         sumX += ax;
         sumY += ay;
-        sumZ += az;
+        sumZ += az - 16384; // Subtract 1g from Z-axis to account for gravity
         sumGX += gx;
         sumGY += gy;
         sumGZ += gz;
+        delay(10);
     }
 
-    ax_offset = sumX / 500;
-    ay_offset = sumY / 500;
-    az_offset = sumZ / 500;
-    gx_offset = sumGX / 500;
-    gy_offset = sumGY / 500;
-    gz_offset = sumGZ / 500;
+    ax_offset = sumX / 200;
+    ay_offset = sumY / 200;
+    az_offset = sumZ / 200;
+    gx_offset = sumGX / 200;
+    gy_offset = sumGY / 200;
+    gz_offset = sumGZ / 200;
 
 
     lastTime = micros();
@@ -115,15 +122,15 @@ void sendIMU() {
     float xOff, yOff, zOff; //linear offsets from last position.
     float gyroX_dps, gyroY_dps, gyroZ_dps;
     float dt;
+    float acc_magnitude;
+    float gyro_magnitude;
+    int i;
 
     /* Timekeeping */
     unsigned long now = micros();
     dt = (now - lastTime) / 1e6;  // Converts to seconds
     lastTime = now;
 
-    /*
-    TODO: IMPLEMENT THE YAW FILTER ADAM SENT, CUZ RN ITS BAD
-    */
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
     /* Apply calibrated offsets*/
@@ -134,13 +141,44 @@ void sendIMU() {
     gy -= gy_offset;
     gz -= gz_offset;
     
-    /* Convert and integrate 3-axis acceleration to get linear position change*/
-    x_mps2 = (ax / 16384.0) * 9.8; //convert to m/s^2
-    y_mps2 = (ay / 16384.0) * 9.8;
-    z_mps2 = (az / 16384.0) * 9.8;
-    x_vel += x_mps2*dt;
-    y_vel += y_mps2*dt;
-    z_vel += z_mps2*dt; 
+    /* Convert 3-axis acceleration to m/s^2*/
+    x_mps2 = ax / 16384.0 * 9.8;
+    y_mps2 = ay / 16384.0 * 9.8;
+    z_mps2 = az / 16384.0 * 9.8;
+
+    // Convert raw gyro values to degrees per second (250 deg/sec range)
+    gyroX_dps = gx / 131.0;
+    gyroY_dps = gy / 131.0;
+    gyroZ_dps = gz / 131.0;
+
+    /* Compute total acceleration magnitude in m/s^2*/
+    acc_magnitude = sqrt(x_mps2*x_mps2 + y_mps2*y_mps2 + z_mps2*z_mps2) - 9.8; // Subtract gravity to get net acceleration
+    gyro_magnitude = sqrt(gyroX_dps*gyroX_dps + gyroY_dps*gyroY_dps + gyroZ_dps*gyroZ_dps);
+
+    /* Detect stationary state */
+    if (gyro_magnitude < GYRO_THRESHOLD && acc_magnitude < ACC_THRESHOLD)
+        stationary_counter++;
+    else
+        stationary_counter = 0; // Reset counter if we detect movement
+
+    
+    if (stationary_counter >= NUM_STATIONARY_SAMPLES)
+    {
+        x_vel = 0;
+        y_vel = 0;
+        z_vel = 0;
+        gyroX_dps = 0;
+        gyroY_dps = 0;
+        gyroZ_dps = 0;
+    }
+    else
+    {
+        /*Only integrate velocity if moving*/
+        x_vel += x_mps2 * dt;
+        y_vel += y_mps2 * dt;
+        z_vel += z_mps2 * dt;
+    }
+    
     xOff = x_vel*dt;
     yOff = y_vel*dt;
     zOff = z_vel*dt;
@@ -149,11 +187,6 @@ void sendIMU() {
     x += xOff;
     y += yOff;
     z += zOff;
-
-    // Convert raw gyro values to degrees per second (250 deg/sec range)
-    gyroX_dps = gx / 131.0;
-    gyroY_dps = gy / 131.0;
-    gyroZ_dps = gz / 131.0;
     
     // Integrate gyro to get angles
     pitch += gyroX_dps*dt;
@@ -170,9 +203,10 @@ void sendIMU() {
 
     //Serial.printf("IMU:%0.2f,0.00,0.00\n", yaw);
     Serial.printf("IMU\n");
-    // Serial.printf("X: %0.2fm, Y: %0.2fm, Z: %0.2fm\n", x, y, z);
-    // Serial.printf("Pitch: %0.2f, Roll: %0.2f, Yaw: %0.2f\n", pitch, roll, yaw);
-    Serial.printf("RAWX: %d, RAWY: %d, RAWZ: %d\n", ax, ay, az);
+    Serial.printf("X: %0.2fm, Y: %0.2fm, Z: %0.2fm\n", x, y, z);
+    Serial.printf("Pitch: %0.2f, Roll: %0.2f, Yaw: %0.2f\n", pitch, roll, yaw);
+    // Serial.printf("RAWX: %d, RAWY: %d, RAWZ: %d\n", ax, ay, az);
+    // Serial.printf("RawPitch: %d, RawRoll: %d, RawYaw: %d\n", gx, gy, gz);
 }
 
 void setup() {
