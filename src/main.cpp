@@ -79,7 +79,7 @@ void initIMU() {
     }
 
     mpu.initialize();
-    mpu.setDLPFMode(4);
+    mpu.setDLPFMode(4); //activate 20Hz low pass filter on sensor output
     
     if (!mpu.testConnection()) {
         Serial.println("MPU6050 connection test failed!");
@@ -112,7 +112,6 @@ void initIMU() {
     gy_offset = sumGY / 200;
     gz_offset = sumGZ / 200;
 
-
     lastTime = micros();
     Serial.println("IMU Ready");
 }
@@ -133,8 +132,6 @@ void sendIMU() {
     lastTime = now;
 
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    
-    
 
     /* Apply calibrated offsets to remove per-axis bias*/
     ax -= ax_offset;
@@ -189,12 +186,13 @@ void sendIMU() {
         y_mps2 -= gravityY;
         z_mps2 -= gravityZ;
 
-        /*Only integrate velocity if moving*/
+        /*Integrate velocity*/
         x_vel += x_mps2 * dt;
         y_vel += y_mps2 * dt;
         z_vel += z_mps2 * dt;
     }
     
+    /* Compute x,y,z offset from previous position*/
     xOff = x_vel*dt;
     yOff = y_vel*dt;
     zOff = z_vel*dt;
