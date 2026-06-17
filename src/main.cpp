@@ -98,7 +98,7 @@ void initIMU() {
         mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
         sumX += ax;
         sumY += ay;
-        sumZ += az - 16384; // Subtract 1g from Z-axis to account for gravity
+        sumZ += az - 16384; // Assume IMU is level at start
         sumGX += gx;
         sumGY += gy;
         sumGZ += gz;
@@ -121,6 +121,7 @@ void sendIMU() {
     float x_mps2, y_mps2, z_mps2; //linear accelerations in mps
     float xOff, yOff, zOff; //linear offsets from last position.
     float gyroX_dps, gyroY_dps, gyroZ_dps;
+    float gravityX=0, gravityY=0, gravityZ=0; //gravity components in mps
     float dt;
     float acc_magnitude;
     float gyro_magnitude;
@@ -132,6 +133,11 @@ void sendIMU() {
     lastTime = now;
 
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    
+    /* Use old values for gravity compensation (may need to use new values) */
+    gravityX = -sin(roll * DEG_TO_RAD) * 9.8;
+    gravityY = sin(pitch * DEG_TO_RAD) * cos(roll * DEG_TO_RAD) * 9.8;
+    gravityZ = cos(pitch * DEG_TO_RAD) * cos(roll * DEG_TO_RAD) * 9.8;
 
     /* Apply calibrated offsets*/
     ax -= ax_offset;
@@ -142,9 +148,9 @@ void sendIMU() {
     gz -= gz_offset;
     
     /* Convert 3-axis acceleration to m/s^2*/
-    x_mps2 = ax / 16384.0 * 9.8;
-    y_mps2 = ay / 16384.0 * 9.8;
-    z_mps2 = az / 16384.0 * 9.8;
+    x_mps2 = ax / 16384.0 * 9.8 - gravityX;
+    y_mps2 = ay / 16384.0 * 9.8 - gravityY;
+    z_mps2 = az / 16384.0 * 9.8 - gravityZ;
 
     // Convert raw gyro values to degrees per second (250 deg/sec range)
     gyroX_dps = gx / 131.0;
