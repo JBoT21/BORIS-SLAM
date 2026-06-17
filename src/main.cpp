@@ -9,7 +9,7 @@
 
 #define NUM_STATIONARY_SAMPLES 10
 #define ACC_THRESHOLD 0.1  // Threshold in mps^2 to consider the robot as moving or stationary
-#define GYRO_THRESHOLD 5   // Threshold in deg/sec to consider the robot as moving or stationary
+#define GYRO_THRESHOLD 3   // Threshold in deg/sec to consider the robot as moving or stationary
 
 // Hardware Pin Definitions (Adjust ESP32 pins as needed)
 // Note: GPIO 6-11 are reserved for flash memory on most ESP32 boards
