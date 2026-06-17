@@ -55,6 +55,7 @@ long gx_offset = 0, gy_offset = 0, gz_offset = 0;
 void initIMU() {
     int i;
     long sumX=0, sumY=0, sumZ=0, sumGX=0, sumGY=0, sumGZ=0;
+    float gravityX=0, gravityY=0, gravityZ=0; //gravity components in mps
 
     Serial.println("Initializing IMU...");
     Wire.begin(SDA_PIN, SCL_PIN);
@@ -98,7 +99,7 @@ void initIMU() {
         mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
         sumX += ax;
         sumY += ay;
-        sumZ += az - 16384; // Assume IMU is level at start
+        sumZ += az; // Assume IMU is level at start
         sumGX += gx;
         sumGY += gy;
         sumGZ += gz;
