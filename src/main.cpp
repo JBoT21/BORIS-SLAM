@@ -5,11 +5,12 @@
 #include "MPU6050.h"
 #include "esp32-hal-gpio.h"
 //#include <Adafruit_MMA8451.h>
-#include <Adafruit_Sensor.h>
+//#include <Adafruit_Sensor.h>
 
 #define NUM_STATIONARY_SAMPLES 5
 #define ACC_THRESHOLD 0.1  // Threshold in mps^2 to consider the robot as moving or stationary
 #define GYRO_THRESHOLD 3   // Threshold in deg/sec to consider the robot as moving or stationary
+#define G 9.8067f //gravitational accelration in m/s^2
 
 // Hardware Pin Definitions (Adjust ESP32 pins as needed)
 // Note: GPIO 6-11 are reserved for flash memory on most ESP32 boards
@@ -56,6 +57,8 @@ void initIMU() {
     int i;
     long sumX=0, sumY=0, sumZ=0, sumGX=0, sumGY=0, sumGZ=0;
     float gravityX=0, gravityY=0, gravityZ=0; //gravity components in mps
+    float init_pitch=0, init_roll=0, init_yaw = 0; //gyroscope offsets from start
+    float dt;
 
     Serial.println("Initializing IMU...");
     Wire.begin(SDA_PIN, SCL_PIN);
@@ -99,10 +102,20 @@ void initIMU() {
         mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
         sumX += ax;
         sumY += ay;
-        sumZ += az; // Assume IMU is level at start
+        sumZ += az;
         sumGX += gx;
         sumGY += gy;
         sumGZ += gz;
+
+        /* Remove gravity bias calculations */
+        init_pitch = atan2f((float)ay, (float)az) * RAD_TO_DEG;
+        init_roll = atan2f(-(float)ax, sqrt((float)ay*(float)ay + (float)az*(float)az)) * RAD_TO_DEG;
+        gravityX = -sinf(init_roll * DEG_TO_RAD) * G;
+        gravityY = sinf(init_pitch * DEG_TO_RAD) * cosf(init_roll * DEG_TO_RAD) * G;
+        gravityZ = cosf(init_roll * DEG_TO_RAD) * cosf(init_pitch * DEG_TO_RAD) * G;
+        sumX -= gravityX;
+        sumY -= gravityY;
+        sumZ -= gravityZ;
         delay(10);
     }
 
@@ -118,10 +131,10 @@ void initIMU() {
 }
 
 void sendIMU() {
+    static float gravityX, gravityY, gravityZ; //gravity components in mps
     float x_mps2, y_mps2, z_mps2; //linear accelerations in mps
     float xOff, yOff, zOff; //linear offsets from last position.
     float gyroX_dps, gyroY_dps, gyroZ_dps;
-    float gravityX=0, gravityY=0, gravityZ=0; //gravity components in mps
     float dt;
     float acc_magnitude;
     float gyro_magnitude;
@@ -129,7 +142,7 @@ void sendIMU() {
 
     /* Timekeeping */
     unsigned long now = micros();
-    dt = (now - lastTime) / 1e6;  // Converts to seconds
+    dt = (now - lastTime) / 1e6f;  // Converts to seconds
     lastTime = now;
 
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
@@ -143,17 +156,17 @@ void sendIMU() {
     gz -= gz_offset;
     
     /* Convert 3-axis acceleration to m/s^2*/
-    x_mps2 = (ax / 16384.0 * 9.8);
-    y_mps2 = (ay / 16384.0 * 9.8);
-    z_mps2 = (az / 16384.0 * 9.8);
+    x_mps2 = (ax / 16384.0f * G);
+    y_mps2 = (ay / 16384.0f * G);
+    z_mps2 = (az / 16384.0f * G);
 
     // Convert raw gyro values to degrees per second (250 deg/sec range)
-    gyroX_dps = gx / 131.0;
-    gyroY_dps = gy / 131.0;
-    gyroZ_dps = gz / 131.0;
+    gyroX_dps = gx / 131.0f;
+    gyroY_dps = gy / 131.0f;
+    gyroZ_dps = gz / 131.0f;
 
     /* Compute total acceleration magnitude in m/s^2*/
-    acc_magnitude = sqrt(x_mps2*x_mps2 + y_mps2*y_mps2 + z_mps2*z_mps2) - 9.8; // Subtract gravity to get net acceleration
+    acc_magnitude = sqrt(x_mps2*x_mps2 + y_mps2*y_mps2 + z_mps2*z_mps2) - G; // Subtract gravity to get net acceleration
     gyro_magnitude = sqrt(gyroX_dps*gyroX_dps + gyroY_dps*gyroY_dps + gyroZ_dps*gyroZ_dps);
 
     /* Detect stationary state */
@@ -161,7 +174,6 @@ void sendIMU() {
         stationary_counter++;
     else
         stationary_counter = 0; // Reset counter if we detect movement
-
     
     if (stationary_counter >= NUM_STATIONARY_SAMPLES)
     {
@@ -180,9 +192,9 @@ void sendIMU() {
         yaw += gyroZ_dps * dt;
 
         /* Adjust for gravity based on current orientation*/
-        gravityX = -sin(roll * DEG_TO_RAD) * 9.8;
-        gravityY = sin(pitch * DEG_TO_RAD) * cos(roll * DEG_TO_RAD) * 9.8;
-        gravityZ = cos(roll * DEG_TO_RAD) * cos(pitch * DEG_TO_RAD) * 9.8;
+        gravityX = -sinf(roll * DEG_TO_RAD) * G;
+        gravityY = sinf(pitch * DEG_TO_RAD) * cosf(roll * DEG_TO_RAD) * G;
+        gravityZ = cosf(roll * DEG_TO_RAD) * cosf(pitch * DEG_TO_RAD) * G;
         x_mps2 -= gravityX;
         y_mps2 -= gravityY;
         z_mps2 -= gravityZ;
@@ -203,7 +215,6 @@ void sendIMU() {
     y += yOff;
     z += zOff;
     
-    
     // Normalize yaw to 0-360
     while (pitch < 0) pitch += 360;
     while (pitch >= 360) pitch -= 360;
@@ -216,7 +227,8 @@ void sendIMU() {
     Serial.printf("IMU\n");
     Serial.printf("X: %0.2fm, Y: %0.2fm, Z: %0.2fm\n", x, y, z);
     Serial.printf("Pitch: %0.2f, Roll: %0.2f, Yaw: %0.2f\n", pitch, roll, yaw);
-    // Serial.printf("RAWX: %d, RAWY: %d, RAWZ: %d\n", ax, ay, az);
+    Serial.printf("X_grav: %0.2f, Y_grav: %0.2f, Z_grav: %0.2f\n", gravityX, gravityY, gravityZ);
+    Serial.printf("RAWX: %d, RAWY: %d, RAWZ: %d\n", ax, ay, az);
     // Serial.printf("RawPitch: %d, RawRoll: %d, RawYaw: %d\n", gx, gy, gz);
 }
 
