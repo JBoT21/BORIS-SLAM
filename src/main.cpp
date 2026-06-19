@@ -81,7 +81,7 @@ void KalmanInit(KalmanFilter &kf, float initAngle, float initBias, float qAngle,
     kf.r = r;
 }
 
-void KalmanUpdate(KalmanFilter &kf, float newAngle, float newRate, float dt, int angleIdx)
+void KalmanUpdateAngle(KalmanFilter &kf, float newAngle, float newRate, float dt, int angleIdx)
 {
     /* These matrices are common to all angle measurements*/
     static Matrix<2,2> A = Eye<2,2>();
