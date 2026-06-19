@@ -6,6 +6,9 @@
 #include "esp32-hal-gpio.h"
 //#include <Adafruit_MMA8451.h>
 //#include <Adafruit_Sensor.h>
+#include <BasicLinearAlgebra.h>
+
+using namespace BLA;
 
 #define NUM_STATIONARY_SAMPLES 5
 #define ACC_THRESHOLD 0.1  // Threshold in mps^2 to consider the robot as moving or stationary
@@ -35,9 +38,24 @@ const int echoPin = 15;
 
 // MPU6050 I2C Address
 #define MPU6050_ADDR 0x68  // Default address (0x69 if AD0 pin is high)
+
+/* Kalman Filter Parameters*/
+#define PITCH_IDX 0
+#define ROLL_IDX 1
+
+typedef struct KalmanFilter
+{
+    Matrix<2, 1> state; //[angle, bias]
+    Matrix<2, 2> P;
+    float qAngle;
+    float qBias;
+    float r;
+} KalmanFilter;
+
 // Global objects
 MPU6050 mpu(MPU6050_ADDR, &Wire);
 //Adafruit_MMA8451 mma = Adafruit_MMA8451();
+
 
 float pitch=0, roll=0, yaw = 0; //gyroscope offsets from start
 float x=0, y=0, z=0; //accelerometer calculated position from start
@@ -52,6 +70,55 @@ int16_t gx, gy, gz;
 // MPU 6050 calibrated offsets
 long ax_offset = 0, ay_offset = 0, az_offset = 0;
 long gx_offset = 0, gy_offset = 0, gz_offset = 0;
+
+void KalmanInit(KalmanFilter &kf, float initAngle, float initBias, float qAngle, float qBias, float r)
+{
+    kf.state(0,0) = initAngle;
+    kf.state(1,0) = initBias;
+    kf.P = Zeros<2,2>();
+    kf.qAngle = qAngle;
+    kf.qBias = qBias;
+    kf.r = r;
+}
+
+void KalmanUpdate(KalmanFilter &kf, float newAngle, float newRate, float dt, int angleIdx)
+{
+    /* These matrices are common to all angle measurements*/
+    static Matrix<2,2> A = Eye<2,2>();
+    static Matrix<2,1> B = Zeros<2,1>();
+    static Matrix<1,2> H = {1,0};
+    static Matrix<2,2> Q = Zeros<2,2>();
+    static Matrix<2,1> K = Zeros<2,1>();
+    static Matrix<2,1> xPred = Zeros<2,1>();
+    static Matrix<2,2> PPred = Zeros<2,2>();
+    static Matrix<2,2> I = Eye<2,2>();
+    static float accelAngle;
+    static float temp;
+
+    /* Insert Parameters*/
+    A(0,1) = -dt;
+    B(0) = dt;
+    Q(0,0) = kf.qAngle;
+    Q(1,1) = kf.qBias;
+
+    if (angleIdx == PITCH_IDX)
+        accelAngle = atan2f(ay, az) * RAD_TO_DEG;
+    else if (angleIdx == ROLL_IDX)
+        accelAngle = atan2f(-ax, sqrt(ay*ay + az*az)) * RAD_TO_DEG;
+    else
+        return;
+
+    /* Prediction Step*/
+    xPred = A*kf.state + B*newRate;
+    PPred = A*kf.P*(~A) + Q;
+
+    /*Update Step*/
+    temp = (H*PPred*(~H) + kf.r)(0);
+    temp = 1.0f/temp;
+    K = PPred * (~H) * temp;
+    kf.state = xPred + K * (accelAngle - H*xPred);
+    kf.P = (I - K*H) * PPred;
+}
 
 void initIMU() {
     int i;
