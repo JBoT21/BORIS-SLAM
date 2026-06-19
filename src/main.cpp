@@ -45,11 +45,11 @@ const int echoPin = 15;
 
 /* Define Kalman Parameters per-axis in case they are different*/
 #define PITCH_Q 0.001f
-#define PITCH_Q_BIAS 0.003f
-#define PITCH_R 0.03f
+#define PITCH_Q_BIAS 0.01f
+#define PITCH_R 0.1f
 #define ROLL_Q 0.001f
 #define ROLL_Q_BIAS 0.003f
-#define ROLL_R 0.03f
+#define ROLL_R 0.1f
 
 typedef struct KalmanFilter
 {
@@ -114,9 +114,15 @@ void KalmanUpdateAngle(KalmanFilter &kf, float newRate, float dt, int angleIdx)
     Q(1,1) = kf.qBias;
 
     if (angleIdx == PITCH_IDX)
+    {
         accelAngle = atan2f(ay, az) * RAD_TO_DEG;
+        // Serial.printf("%0.2f,", accelAngle); //for tuning the R parameter
+    }
     else if (angleIdx == ROLL_IDX)
+    {
         accelAngle = atan2f(-ax, sqrt(ay*ay + az*az)) * RAD_TO_DEG;
+        // Serial.printf("%0.2f\n", accelAngle); //for tuning the R parameter
+    }
     else
         return;
 
@@ -139,9 +145,9 @@ void initIMU() {
     float init_pitch=0, init_roll=0, init_yaw = 0; //gyroscope offsets from start
     float dt;
 
-    Serial.println("Initializing IMU...");
+    // Serial.println("Initializing IMU...");
     Wire.begin(SDA_PIN, SCL_PIN);
-    Serial.println("I2C Initialized");
+    // Serial.println("I2C Initialized");
     Wire.beginTransmission(MPU6050_ADDR);
     int error = Wire.endTransmission();
     
@@ -168,7 +174,7 @@ void initIMU() {
         Serial.println("MPU6050 connection test failed!");
         while (1);
     }
-    Serial.println("MPU6050 Initialized!");
+    // Serial.println("MPU6050 Initialized!");
     
     // Set up the accelerometer and gyro
     mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_250);  // 250 deg/sec
@@ -205,8 +211,11 @@ void initIMU() {
     gy_offset = sumGY / 200;
     gz_offset = sumGZ / 200;
 
+    gx_offset = 0;
+    gy_offset = 0;
+
     lastTime = micros();
-    Serial.println("IMU Ready");
+    // Serial.println("IMU Ready");
 }
 
 void sendIMU() {
@@ -306,8 +315,12 @@ void sendIMU() {
     while (yaw < 0) yaw += 360;
     while (yaw >= 360) yaw -= 360;
 
-    //Serial.printf("IMU:%0.2f,0.00,0.00\n", yaw);
-    Serial.printf("IMU\n");
+    /* angle bias analysis*/
+    // Serial.printf("%0.5f,%0.5f,%0.5f,%0.5f\n", pitchKF.state(0,1), pitch, rollKF.state(0,1), roll);
+    //Serial.printf("%0.5f, %0.5f\n", (gx_offset/131.0f), (gy_offset/131.0f));
+
+    // //Serial.printf("IMU:%0.2f,0.00,0.00\n", yaw);
+    // Serial.printf("IMU\n");
     Serial.printf("X: %0.2fm, Y: %0.2fm, Z: %0.2fm\n", x, y, z);
     Serial.printf("Pitch: %0.2f, Roll: %0.2f, Yaw: %0.2f\n", pitch, roll, yaw);
     Serial.printf("X_grav: %0.2f, Y_grav: %0.2f, Z_grav: %0.2f\n", gravityX, gravityY, gravityZ);
@@ -318,12 +331,12 @@ void sendIMU() {
 void setup() {
     Serial.begin(115200);  // Used to communicate w/ ESP32 (Sensor data output)
     Serial2.begin(115200, SERIAL_8N1, 16, 17);  // Used to communicate w/ Jetson (Command input)
-    Serial.println("Serial Initialized");
+    // Serial.println("Serial Initialized");
 
     // Ultrasonic
     pinMode(trigPin, OUTPUT);
     pinMode(echoPin, INPUT);
-    Serial.println("Ultrasonic Initialized");
+    // Serial.println("Ultrasonic Initialized");
 
     // Motor pins
     pinMode(AIN1, OUTPUT);
@@ -338,7 +351,7 @@ void setup() {
     ledcAttachPin(PWMA, 0);
     ledcSetup(1, 1000, 8);
     ledcAttachPin(PWMB, 1);
-    Serial.println("Motors Initialized");
+    // Serial.println("Motors Initialized");
 
     /* Kalman Filters */
     KalmanInitAngle(pitchKF, 0, 0, PITCH_Q, PITCH_Q_BIAS, PITCH_R);
@@ -373,7 +386,7 @@ long readUltrasonic() {
     digitalWrite(trigPin, LOW);
 
     long duration = pulseIn(echoPin, HIGH, 60000);
-    Serial.printf("ULTRA_RAW:%ld\n", duration);
+    // Serial.printf("ULTRA_RAW:%ld\n", duration);
     return duration * 0.034 / 2;  // Convert to cm
 }
 
@@ -442,8 +455,8 @@ void loop() {
 
     // Send ultrasonic data
     long distance = readUltrasonic();
-    Serial.printf("ULTRASONIC:%ld\n", distance);
-    Serial.printf("\n");// Blank line for better readability
+    // Serial.printf("ULTRASONIC:%ld\n", distance);
+    // Serial.printf("\n");// Blank line for better readability
 
     // Send IMU (gyro-based yaw)
     sendIMU();

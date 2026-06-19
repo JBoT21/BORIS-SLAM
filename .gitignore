@@ -23,4 +23,5 @@ __pycache__/
 #arch linux metadata
 compile_commands.json
 
-
+#collected data from serial monitors
+logs/
