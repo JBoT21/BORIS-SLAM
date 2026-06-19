@@ -43,6 +43,14 @@ const int echoPin = 15;
 #define PITCH_IDX 0
 #define ROLL_IDX 1
 
+/* Define Kalman Parameters per-axis in case they are different*/
+#define PITCH_Q 0.001f
+#define PITCH_Q_BIAS 0.003f
+#define PITCH_R 0.03f
+#define ROLL_Q 0.001f
+#define ROLL_Q_BIAS 0.003f
+#define ROLL_R 0.03f
+
 typedef struct KalmanFilter
 {
     Matrix<2, 1> state; //[angle, bias]
@@ -71,7 +79,11 @@ int16_t gx, gy, gz;
 long ax_offset = 0, ay_offset = 0, az_offset = 0;
 long gx_offset = 0, gy_offset = 0, gz_offset = 0;
 
-void KalmanInit(KalmanFilter &kf, float initAngle, float initBias, float qAngle, float qBias, float r)
+/* Kalman Filters */
+KalmanFilter pitchKF;
+KalmanFilter rollKF;
+
+void KalmanInitAngle(KalmanFilter &kf, float initAngle, float initBias, float qAngle, float qBias, float r)
 {
     kf.state(0,0) = initAngle;
     kf.state(1,0) = initBias;
@@ -81,7 +93,7 @@ void KalmanInit(KalmanFilter &kf, float initAngle, float initBias, float qAngle,
     kf.r = r;
 }
 
-void KalmanUpdateAngle(KalmanFilter &kf, float newAngle, float newRate, float dt, int angleIdx)
+void KalmanUpdateAngle(KalmanFilter &kf, float newRate, float dt, int angleIdx)
 {
     /* These matrices are common to all angle measurements*/
     static Matrix<2,2> A = Eye<2,2>();
@@ -95,7 +107,7 @@ void KalmanUpdateAngle(KalmanFilter &kf, float newAngle, float newRate, float dt
     static float accelAngle;
     static float temp;
 
-    /* Insert Parameters*/
+    /* Insert Iteration-dependent parameters*/
     A(0,1) = -dt;
     B(0) = dt;
     Q(0,0) = kf.qAngle;
@@ -177,12 +189,12 @@ void initIMU() {
         /* Remove gravity bias calculations */
         init_pitch = atan2f((float)ay, (float)az) * RAD_TO_DEG;
         init_roll = atan2f(-(float)ax, sqrt((float)ay*(float)ay + (float)az*(float)az)) * RAD_TO_DEG;
-        gravityX = -sinf(init_roll * DEG_TO_RAD) * G;
-        gravityY = sinf(init_pitch * DEG_TO_RAD) * cosf(init_roll * DEG_TO_RAD) * G;
-        gravityZ = cosf(init_roll * DEG_TO_RAD) * cosf(init_pitch * DEG_TO_RAD) * G;
-        sumX -= gravityX;
-        sumY -= gravityY;
-        sumZ -= gravityZ;
+        gravityX = -sinf(init_roll * DEG_TO_RAD) * 16384.0f;;
+        gravityY = sinf(init_pitch * DEG_TO_RAD) * cosf(init_roll * DEG_TO_RAD) * 16384.0f;
+        gravityZ = cosf(init_roll * DEG_TO_RAD) * cosf(init_pitch * DEG_TO_RAD) * 16384.0f;
+        sumX -= (long) gravityX;
+        sumY -= (long) gravityY;
+        sumZ -= (long) gravityZ;
         delay(10);
     }
 
@@ -242,6 +254,8 @@ void sendIMU() {
     else
         stationary_counter = 0; // Reset counter if we detect movement
     
+    /*Set all velocities to zero if stationary*/
+    /*Must be done before Kalman update to filter out gyro noise*/
     if (stationary_counter >= NUM_STATIONARY_SAMPLES)
     {
         x_vel = 0;
@@ -251,14 +265,16 @@ void sendIMU() {
         gyroY_dps = 0;
         gyroZ_dps = 0;
     }
-    else
-    {
-        // Integrate gyro to get angles
-        pitch += gyroX_dps*dt;
-        roll += gyroY_dps*dt;
-        yaw += gyroZ_dps * dt;
 
-        /* Adjust for gravity based on current orientation*/
+    KalmanUpdateAngle(pitchKF, gyroX_dps, dt, PITCH_IDX);
+    KalmanUpdateAngle(rollKF, gyroY_dps, dt, ROLL_IDX);
+    pitch = pitchKF.state(0);
+    roll = rollKF.state(0);
+    yaw += gyroZ_dps*dt;
+
+    /* Use the Kalman-adjusted orientation to determine gravity if moving */
+    if (stationary_counter < NUM_STATIONARY_SAMPLES)
+    {
         gravityX = -sinf(roll * DEG_TO_RAD) * G;
         gravityY = sinf(pitch * DEG_TO_RAD) * cosf(roll * DEG_TO_RAD) * G;
         gravityZ = cosf(roll * DEG_TO_RAD) * cosf(pitch * DEG_TO_RAD) * G;
@@ -295,7 +311,7 @@ void sendIMU() {
     Serial.printf("X: %0.2fm, Y: %0.2fm, Z: %0.2fm\n", x, y, z);
     Serial.printf("Pitch: %0.2f, Roll: %0.2f, Yaw: %0.2f\n", pitch, roll, yaw);
     Serial.printf("X_grav: %0.2f, Y_grav: %0.2f, Z_grav: %0.2f\n", gravityX, gravityY, gravityZ);
-    Serial.printf("RAWX: %d, RAWY: %d, RAWZ: %d\n", ax, ay, az);
+    //Serial.printf("RAWX: %d, RAWY: %d, RAWZ: %d\n", ax, ay, az);
     // Serial.printf("RawPitch: %d, RawRoll: %d, RawYaw: %d\n", gx, gy, gz);
 }
 
@@ -323,6 +339,10 @@ void setup() {
     ledcSetup(1, 1000, 8);
     ledcAttachPin(PWMB, 1);
     Serial.println("Motors Initialized");
+
+    /* Kalman Filters */
+    KalmanInitAngle(pitchKF, 0, 0, PITCH_Q, PITCH_Q_BIAS, PITCH_R);
+    KalmanInitAngle(rollKF, 0, 0, ROLL_Q, ROLL_Q_BIAS, ROLL_R);
 
     // IMU
     initIMU();
