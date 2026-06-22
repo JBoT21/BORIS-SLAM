@@ -298,6 +298,8 @@ void sendIMU() {
     }
     
     /* Compute x,y,z offset from previous position*/
+    //Jackson's Notes: I suspect that this "dead reckoning" approach may be leading to significant drift over time.
+    //Will experiment with using the raw gyro angles directly for orientation, and sending raw IMU data to the Jetson (Nav.py)
     xOff = x_vel*dt;
     yOff = y_vel*dt;
     zOff = z_vel*dt;
