@@ -37,7 +37,8 @@ def main():
     print("Starting Jetson Nano + ESP32 SLAM System!!!!")
     print("Initializing hardware interfaces...")
 
-    serial = SerialLink(port="/dev/ttyUSB0", baud=115200)
+    serial = SerialLink(port="/dev/ttyTHS1", baud=115200)
+    #Changed to work with UART
     motion = MotionController(serial)
 
     print("Initializing SLAM components...")
