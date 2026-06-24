@@ -20,6 +20,7 @@ loop:
     visualize (optional)
 
 """
+import os
 import time
 #Hardware interfaces
 from serial_link import *
@@ -46,10 +47,15 @@ def main():
     localization = Localization(grid)
     mapper = MappingEngine(grid, localization)
     navigator = Navigator(grid, localization)
-    visual = Visualizer(grid, localization, show_rays=True)
+    headless = not os.environ.get("DISPLAY")
 
-    print("SLAM components initialized.")
-    print("Entering main control loop...")
+    if not headless:
+        visual = Visualizer(grid, localization, show_rays=True)
+    else:
+        print("[Visualizer] Running headless — visualization disabled")
+
+        print("SLAM components initialized.")
+        print("Entering main control loop...")
 
     LoopHZ = 10
     LoopDT = 1.0 / LoopHZ
