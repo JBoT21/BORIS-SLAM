@@ -102,10 +102,11 @@ def main():
             else:
                 print(f"[WARN] Loop overran: {elapsed:.3f}s (target {LoopDT:.3f}s)")
 
-    except KeyboardInterrupt:
-        print("Shutting down SLAM system...")
+    except Exception as e:
+        print("ERROR:", e)
         motion.stop()
         serial.close()
+        raise
 
 
 if __name__ == "__main__":
