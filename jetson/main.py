@@ -70,9 +70,11 @@ def main():
     try:
         while True:
             loop_start = time.time()
+            print("Loop start")
 
             # 1. Read sensors (ultrasonic + IMU)
             ultra, imu = serial.read_sensors()
+            print("Sensors read")
             if ultra is not None:
                 mapper.update_from_ultrasonic(ultra)
                 localization.last_distance = ultra  # for visualizer
@@ -81,19 +83,24 @@ def main():
 
             # 2. Predict localization 
             localization.predict(dt=LoopDT)
+            print("Localization predicted")
 
             # 3. Update map
             mapper.integrate()
+            print("Map updated")
 
             # 4. Navigation decision
             command = navigator.decide_next_move()
             motion.execute(command)
+            print("Motion commanded")
 
             # Notify localization of movement
             localization.notify_motion(command, speed=120)
+            print("Localization notified of motion")
 
             # 5. Visualization
             visual.update()
+            print("Visualization updated")
 
             # 6. Loop timing
             elapsed = time.time() - loop_start
