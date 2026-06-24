@@ -74,9 +74,7 @@ def main():
             print("Loop start")
 
             # 1. Read sensors (ultrasonic + IMU)
-            print("Before read_sensors()", flush=True)
             ultra, imu = serial.read_sensors()
-            print("After read_sensors()", flush=True)
             if ultra is not None:
                 mapper.update_from_ultrasonic(ultra)
                 localization.last_distance = ultra  # for visualizer
@@ -93,6 +91,7 @@ def main():
 
             # 4. Navigation decision
             command = navigator.decide_next_move()
+            print(f"[CMD] Sending command to ESP32: {command}", flush=True)
             motion.execute(command)
             print("Motion commanded")
 
