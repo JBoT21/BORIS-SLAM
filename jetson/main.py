@@ -54,6 +54,11 @@ def main():
     else:
         print("[Visualizer] Running headless — visualization disabled")
 
+        class DummyVisualizer:
+            def update(self): 
+                pass
+        visual = DummyVisualizer()
+
         print("SLAM components initialized.")
         print("Entering main control loop...")
 
