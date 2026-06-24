@@ -68,6 +68,7 @@ def main():
     LoopDT = 1.0 / LoopHZ
 
     try:
+        print("=== LOOP TICK ===")
         while True:
             loop_start = time.time()
             print("Loop start")
