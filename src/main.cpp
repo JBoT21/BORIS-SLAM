@@ -106,7 +106,7 @@ void sendIMU() {
 
 void setup() {
     Serial.begin(115200);  // Used to communicate w/ ESP32 (Sensor data output)
-    Serial2.begin(115200, SERIAL_8N1, 16, 17);  // Used to communicate w/ Jetson (Command input)
+    //Serial2.begin(115200, SERIAL_8N1, 16, 17);  // Used to communicate w/ Jetson (Command input)
     Serial.println("Serial Initialized");
 
     // Ultrasonic
@@ -202,7 +202,7 @@ void stopMotors() {
 void loop() {
     // Jetson commands handling
     if (Serial.available()) { //Was Serial2.available()
-        char cmd = Serial2.read();
+        char cmd = Serial.read();
 
         if (cmd == 'F') {
             leftMotor(200);
