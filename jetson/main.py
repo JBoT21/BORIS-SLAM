@@ -55,12 +55,14 @@ def main():
         print("[Visualizer] Running headless — visualization disabled")
 
         class DummyVisualizer:
-            def update(self): 
+            def update(self):
                 pass
+
         visual = DummyVisualizer()
 
-        print("SLAM components initialized.")
-        print("Entering main control loop...")
+    print("SLAM components initialized.")
+    print("Entering main control loop...")
+
 
     LoopHZ = 10
     LoopDT = 1.0 / LoopHZ
