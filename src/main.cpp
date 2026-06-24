@@ -42,6 +42,8 @@ const int echoPin = 15;
 /* Kalman Filter Parameters*/
 #define PITCH_IDX 0
 #define ROLL_IDX 1
+#define YAW_IDX 2
+#define VEL_IDX 3
 
 /* Define Kalman Parameters per-axis in case they are different*/
 #define PITCH_Q 0.001f
@@ -51,11 +53,14 @@ const int echoPin = 15;
 #define ROLL_Q_BIAS 0.003f
 #define ROLL_R 0.1f
 
+#define MOTOR_CONSTANT 0.1f
+#define TAU 0.2f
+
 typedef struct KalmanFilter
 {
     Matrix<2, 1> state; //[angle, bias]
     Matrix<2, 2> P;
-    float qAngle;
+    float qValue;
     float qBias;
     float r;
 } KalmanFilter;
@@ -82,18 +87,23 @@ long gx_offset = 0, gy_offset = 0, gz_offset = 0;
 /* Kalman Filters */
 KalmanFilter pitchKF;
 KalmanFilter rollKF;
+KalmanFilter yawKF;
+KalmanFilter velKF;
 
-void KalmanInitAngle(KalmanFilter &kf, float initAngle, float initBias, float qAngle, float qBias, float r)
+/* Kalman Filter Global data */
+float x_mps2, y_mps2, z_mps2; //linear accelerations in mps
+
+void KalmanInit(KalmanFilter &kf, float initAngle, float initBias, float qValue, float qBias, float r)
 {
     kf.state(0,0) = initAngle;
     kf.state(1,0) = initBias;
     kf.P = Zeros<2,2>();
-    kf.qAngle = qAngle;
+    kf.qValue = qValue;
     kf.qBias = qBias;
     kf.r = r;
 }
 
-void KalmanUpdateAngle(KalmanFilter &kf, float newRate, float dt, int angleIdx)
+void KalmanUpdate(KalmanFilter &kf, float controlInput, float dt, int valueIdx)
 {
     /* These matrices are common to all angle measurements*/
     static Matrix<2,2> A = Eye<2,2>();
@@ -104,37 +114,50 @@ void KalmanUpdateAngle(KalmanFilter &kf, float newRate, float dt, int angleIdx)
     static Matrix<2,1> xPred = Zeros<2,1>();
     static Matrix<2,2> PPred = Zeros<2,2>();
     static Matrix<2,2> I = Eye<2,2>();
-    static float accelAngle;
+    static float z;
     static float temp;
 
     /* Insert Iteration-dependent parameters*/
     A(0,1) = -dt;
-    B(0) = dt;
-    Q(0,0) = kf.qAngle;
+    Q(0,0) = kf.qValue;;
     Q(1,1) = kf.qBias;
 
-    if (angleIdx == PITCH_IDX)
+    /* Take Measurement */
+    if (valueIdx == PITCH_IDX)
     {
-        accelAngle = atan2f(ay, az) * RAD_TO_DEG;
+        z = atan2f(ay, az) * RAD_TO_DEG;
+        B(0) = dt;
         // Serial.printf("%0.2f,", accelAngle); //for tuning the R parameter
     }
-    else if (angleIdx == ROLL_IDX)
+    else if (valueIdx == ROLL_IDX)
     {
-        accelAngle = atan2f(-ax, sqrt(ay*ay + az*az)) * RAD_TO_DEG;
+        z = atan2f(-ax, sqrt(ay*ay + az*az)) * RAD_TO_DEG;
+        B(0) = dt;
         // Serial.printf("%0.2f\n", accelAngle); //for tuning the R parameter
     }
+    else if (valueIdx == YAW_IDX)
+    {
+        /* TODO */
+    }
+    else if (valueIdx == VEL_IDX)
+    {
+        z = y_mps2*dt + kf.state(0);
+        B(0) = MOTOR_CONSTANT * dt / TAU;
+    }
     else
+    {
         return;
-
+    }
+    
     /* Prediction Step*/
-    xPred = A*kf.state + B*newRate;
+    xPred = A*kf.state + B*controlInput;
     PPred = A*kf.P*(~A) + Q;
 
     /*Update Step*/
     temp = (H*PPred*(~H) + kf.r)(0);
     temp = 1.0f/temp;
     K = PPred * (~H) * temp;
-    kf.state = xPred + K * (accelAngle - H*xPred);
+    kf.state = xPred + K * (z - H*xPred);
     kf.P = (I - K*H) * PPred;
 }
 
@@ -220,7 +243,7 @@ void initIMU() {
 
 void sendIMU() {
     static float gravityX, gravityY, gravityZ; //gravity components in mps
-    float x_mps2, y_mps2, z_mps2; //linear accelerations in mps
+    
     float xOff, yOff, zOff; //linear offsets from last position.
     float gyroX_dps, gyroY_dps, gyroZ_dps;
     float dt;
@@ -275,8 +298,8 @@ void sendIMU() {
         gyroZ_dps = 0;
     }
 
-    KalmanUpdateAngle(pitchKF, gyroX_dps, dt, PITCH_IDX);
-    KalmanUpdateAngle(rollKF, gyroY_dps, dt, ROLL_IDX);
+    KalmanUpdate(pitchKF, gyroX_dps, dt, PITCH_IDX);
+    KalmanUpdate(rollKF, gyroY_dps, dt, ROLL_IDX);
     pitch = pitchKF.state(0);
     roll = rollKF.state(0);
     yaw += gyroZ_dps*dt;
@@ -356,8 +379,8 @@ void setup() {
     // Serial.println("Motors Initialized");
 
     /* Kalman Filters */
-    KalmanInitAngle(pitchKF, 0, 0, PITCH_Q, PITCH_Q_BIAS, PITCH_R);
-    KalmanInitAngle(rollKF, 0, 0, ROLL_Q, ROLL_Q_BIAS, ROLL_R);
+    KalmanInit(pitchKF, 0, 0, PITCH_Q, PITCH_Q_BIAS, PITCH_R);
+    KalmanInit(rollKF, 0, 0, ROLL_Q, ROLL_Q_BIAS, ROLL_R);
 
     // IMU
     initIMU();
