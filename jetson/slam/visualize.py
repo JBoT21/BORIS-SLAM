@@ -10,6 +10,7 @@ Responsibilities:
 4. Save frames for debugging?
 """
 import matplotlib.pyplot as plt
+plt.use("Agg")   # No GUI backend
 import numpy as np
 import os
 
