@@ -39,12 +39,6 @@ const int echoPin = 15;
 // MPU6050 I2C Address
 #define MPU6050_ADDR 0x68  // Default address (0x69 if AD0 pin is high)
 
-/* Kalman Filter Parameters*/
-#define PITCH_IDX 0
-#define ROLL_IDX 1
-#define YAW_IDX 2
-#define VEL_IDX 3
-
 /* Define Kalman Parameters per-axis in case they are different*/
 #define PITCH_Q 0.001f
 #define PITCH_Q_BIAS 0.01f
@@ -52,9 +46,26 @@ const int echoPin = 15;
 #define ROLL_Q 0.001f
 #define ROLL_Q_BIAS 0.003f
 #define ROLL_R 0.1f
+/* TODO the YAW parameters are almost certainly wrong*/
+#define YAW_Q 0.001f
+#define YAW_Q_BIAS 0.003f
+#define YAW_R 0.1f
+/* TODO the VEL parameters are almost certainly wrong*/
+#define VEL_Q 0.001f
+#define VEL_Q_BIAS 0.003f
+#define VEL_R 0.1f
 
-#define MOTOR_CONSTANT 0.1f
+#define K_FORWARD 0.1f
+#define K_ROTATION 0.1f
 #define TAU 0.2f
+
+enum ValueType
+{
+    PITCH,
+    ROLL,
+    YAW,
+    VELOCITY
+};
 
 typedef struct KalmanFilter
 {
@@ -63,6 +74,7 @@ typedef struct KalmanFilter
     float qValue;
     float qBias;
     float r;
+    ValueType type;
 } KalmanFilter;
 
 // Global objects
@@ -91,19 +103,21 @@ KalmanFilter yawKF;
 KalmanFilter velKF;
 
 /* Kalman Filter Global data */
-float x_mps2, y_mps2, z_mps2; //linear accelerations in mps
+float x_mps2=0, y_mps2=0, z_mps2=0; //linear accelerations in mps
+float leftPWM=0, rightPWM=0; //motor PWM values
 
-void KalmanInit(KalmanFilter &kf, float initAngle, float initBias, float qValue, float qBias, float r)
+void KalmanInit(KalmanFilter &kf, float initValue, float initBias, float qValue, float qBias, float r, ValueType type)
 {
-    kf.state(0,0) = initAngle;
+    kf.state(0,0) = initValue;
     kf.state(1,0) = initBias;
     kf.P = Zeros<2,2>();
     kf.qValue = qValue;
     kf.qBias = qBias;
     kf.r = r;
+    kf.type = type;
 }
 
-void KalmanUpdate(KalmanFilter &kf, float controlInput, float dt, int valueIdx)
+void KalmanUpdate(KalmanFilter &kf, float controlInput, float dt)
 {
     /* These matrices are common to all angle measurements*/
     static Matrix<2,2> A = Eye<2,2>();
@@ -117,32 +131,47 @@ void KalmanUpdate(KalmanFilter &kf, float controlInput, float dt, int valueIdx)
     static float z;
     static float temp;
 
-    /* Insert Iteration-dependent parameters*/
-    A(0,1) = -dt;
+    /* Instantiate Q*/
     Q(0,0) = kf.qValue;;
     Q(1,1) = kf.qBias;
 
-    /* Take Measurement */
-    if (valueIdx == PITCH_IDX)
+    /* Take Measurement and Configure Control Matrix */
+    if (kf.type == PITCH)
     {
+        A(0,0) = 1;
+        A(0, 1) = -dt;
+        A(1,0) = 0;
+        A(1, 1) = 1;
         z = atan2f(ay, az) * RAD_TO_DEG;
         B(0) = dt;
         // Serial.printf("%0.2f,", accelAngle); //for tuning the R parameter
     }
-    else if (valueIdx == ROLL_IDX)
+    else if (kf.type == ROLL)
     {
+        A(0,0) = 1;
+        A(0, 1) = -dt;
+        A(1,0) = 0;
+        A(1, 1) = 1;
         z = atan2f(-ax, sqrt(ay*ay + az*az)) * RAD_TO_DEG;
         B(0) = dt;
         // Serial.printf("%0.2f\n", accelAngle); //for tuning the R parameter
     }
-    else if (valueIdx == YAW_IDX)
+    else if (kf.type  == YAW)
     {
-        /* TODO */
+        A(0,0) = 1;
+        A(0, 1) = -dt;
+        A(1,0) = 0;
+        A(1, 1) = 1;
+        B(0) = K_ROTATION * dt *dt/TAU;
     }
-    else if (valueIdx == VEL_IDX)
+    else if (kf.type == VELOCITY)
     {
+        A(0,0) = 1 - dt/TAU;
+        A(0, 1) = -dt;
+        A(1,0) = 0;
+        A(1, 1) = 1;
         z = y_mps2*dt + kf.state(0);
-        B(0) = MOTOR_CONSTANT * dt / TAU;
+        B(0) = K_FORWARD * dt / TAU;
     }
     else
     {
@@ -298,11 +327,11 @@ void sendIMU() {
         gyroZ_dps = 0;
     }
 
-    KalmanUpdate(pitchKF, gyroX_dps, dt, PITCH_IDX);
-    KalmanUpdate(rollKF, gyroY_dps, dt, ROLL_IDX);
+    KalmanUpdate(pitchKF, gyroX_dps, dt);
+    KalmanUpdate(rollKF, gyroY_dps, dt);
     pitch = pitchKF.state(0);
     roll = rollKF.state(0);
-    yaw += gyroZ_dps*dt;
+    //yaw += gyroZ_dps*dt;
 
     /* Use the Kalman-adjusted orientation to determine gravity if moving */
     if (stationary_counter < NUM_STATIONARY_SAMPLES)
@@ -319,6 +348,9 @@ void sendIMU() {
         y_vel += y_mps2 * dt;
         z_vel += z_mps2 * dt;
     }
+
+    /* Compute Forward (y-axis) velocity*/
+    
     
     /* Compute x,y,z offset from previous position*/
     //Jackson's Notes: I suspect that this "dead reckoning" approach may be leading to significant drift over time.
@@ -379,8 +411,10 @@ void setup() {
     // Serial.println("Motors Initialized");
 
     /* Kalman Filters */
-    KalmanInit(pitchKF, 0, 0, PITCH_Q, PITCH_Q_BIAS, PITCH_R);
-    KalmanInit(rollKF, 0, 0, ROLL_Q, ROLL_Q_BIAS, ROLL_R);
+    KalmanInit(pitchKF, 0, 0, PITCH_Q, PITCH_Q_BIAS, PITCH_R, PITCH);
+    KalmanInit(rollKF, 0, 0, ROLL_Q, ROLL_Q_BIAS, ROLL_R, ROLL);
+    KalmanInit(yawKF, 0, 0, YAW_Q, YAW_Q_BIAS, YAW_R, YAW);
+    KalmanInit(velKF, 0, 0, VEL_Q, VEL_Q_BIAS, VEL_R, VELOCITY);
 
     // IMU
     initIMU();
