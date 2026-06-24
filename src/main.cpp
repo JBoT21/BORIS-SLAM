@@ -201,7 +201,7 @@ void stopMotors() {
 
 void loop() {
     // Jetson commands handling
-    if (Serial2.available()) {
+    if (Serial.available()) { //Was Serial2.available()
         char cmd = Serial2.read();
 
         if (cmd == 'F') {
