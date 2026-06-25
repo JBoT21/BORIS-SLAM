@@ -158,14 +158,21 @@ void KalmanUpdate(KalmanFilter &kf, float controlInput, float dt)
     }
     else if (kf.type  == YAW)
     {
+        /* Ideally, this would implement first-order lag, as with the forward velocity.
+           However, doing so in this case would require a new KF struct and function
+           that works with 3x3 matrices. Going to leave this without the lag for now
+           until it proves to cause issues with position accuracy
+           Turning slowly may mitigate this issue*/
         A(0,0) = 1;
         A(0, 1) = -dt;
         A(1,0) = 0;
         A(1, 1) = 1;
-        B(0) = K_ROTATION * dt *dt/TAU;
+        B(0) = K_ROTATION * dt;
     }
     else if (kf.type == VELOCITY)
     {
+        /* dt/TAU terms are a first-order lag adjustment, accounting for the time it takes
+           for the motors to spin up when commanded. TAU is the motor response time*/
         A(0,0) = 1 - dt/TAU;
         A(0, 1) = -dt;
         A(1,0) = 0;
