@@ -7,6 +7,7 @@
 //#include <Adafruit_MMA8451.h>
 //#include <Adafruit_Sensor.h>
 #include <BasicLinearAlgebra.h>
+#include <cstdint>
 
 using namespace BLA;
 
@@ -48,12 +49,12 @@ const int echoPin = 15;
 #define ROLL_R 0.1f
 /* TODO the YAW parameters are almost certainly wrong*/
 #define YAW_Q 0.001f
-#define YAW_Q_BIAS 0.003f
-#define YAW_R 0.1f
+#define YAW_Q_BIAS 0.005f
+#define YAW_R 0.03f
 /* TODO the VEL parameters are almost certainly wrong*/
-#define VEL_Q 0.001f
-#define VEL_Q_BIAS 0.003f
-#define VEL_R 0.1f
+#define VEL_Q 0.1f
+#define VEL_Q_BIAS 0.01f
+#define VEL_R 0.01f
 
 #define K_FORWARD 0.1f
 #define K_ROTATION 0.1f
@@ -500,26 +501,78 @@ void stopMotors() {
 
 void loop() {
     // Jetson commands handling
-    if (Serial2.available()) {
-        char cmd = Serial2.read();
+    // if (Serial2.available()) {
+    //     char cmd = Serial2.read();
 
-        if (cmd == 'F') {
-            leftMotor(200);
-            rightMotor(200);
+    //     if (cmd == 'F') {
+    //         leftMotor(200);
+    //         rightMotor(200);
+    //     }
+    //     else if (cmd == 'B') {
+    //         leftMotor(-200);
+    //         rightMotor(-200);
+    //     }
+    //     else if (cmd == 'L') {
+    //         leftMotor(-150);
+    //         rightMotor(150);
+    //     }
+    //     else if (cmd == 'R') {
+    //         leftMotor(150);
+    //         rightMotor(-150);
+    //     }
+    //     else if (cmd == 'S') {
+    //         stopMotors();
+    //     }
+    // }
+
+    static uint32_t lastChange = 0;
+    static uint32_t now = 0;
+    static uint8_t state = 0;
+
+    now = millis();
+
+    if (now - lastChange > 5000)
+    {
+        state = (state + 1) % 9;
+        if (state == 0)
+        {
+            leftMotor(0);
+            rightMotor(0);
         }
-        else if (cmd == 'B') {
-            leftMotor(-200);
-            rightMotor(-200);
-        }
-        else if (cmd == 'L') {
-            leftMotor(-150);
+        else if (state == 1)
+        {
+            leftMotor(150);
             rightMotor(150);
         }
-        else if (cmd == 'R') {
+        else if (state == 2)
+        {
+            stopMotors();
+        }
+        else if (state == 3)
+        {
             leftMotor(150);
             rightMotor(-150);
         }
-        else if (cmd == 'S') {
+        else if (state == 4)
+        {
+            stopMotors();
+        }
+        else if (state == 5)
+        {
+            leftMotor(-150);
+            rightMotor(-150);
+        }
+        else if (state == 6)
+        {
+            stopMotors();
+        }
+        else if (state == 7)
+        {
+            leftMotor(-150);
+            rightMotor(150);
+        }
+        else if (state == 8)
+        {
             stopMotors();
         }
     }
