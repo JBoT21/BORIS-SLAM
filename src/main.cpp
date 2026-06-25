@@ -286,6 +286,8 @@ void sendIMU() {
     float acc_magnitude;
     float gyro_magnitude;
     int i;
+    float forwardPWM, forwardVel;
+    float rotationPWM, theta;
 
     /* Timekeeping */
     unsigned long now = micros();
@@ -338,7 +340,6 @@ void sendIMU() {
     KalmanUpdate(rollKF, gyroY_dps, dt);
     pitch = pitchKF.state(0);
     roll = rollKF.state(0);
-    //yaw += gyroZ_dps*dt;
 
     /* Use the Kalman-adjusted orientation to determine gravity if moving */
     if (stationary_counter < NUM_STATIONARY_SAMPLES)
@@ -357,11 +358,26 @@ void sendIMU() {
     }
 
     /* Compute Forward (y-axis) velocity*/
-    
+    forwardPWM = (leftPWM+rightPWM) / 2.0;
+    KalmanUpdate(velKF, forwardPWM, dt);
+    forwardVel = velKF.state(0);
+
+    /* Compute bearing (relative to starting orientation)*/
+    rotationPWM = (leftPWM - rightPWM);
+    KalmanUpdate(yawKF, rotationPWM, dt);
+    theta = yawKF.state(0);
+
+    /* theta measures bearing in degrees RIGHT of the y axis */
+    /* Normalize to (-180, 180]*/
+    while (theta > 180) theta -= 360;
+    while (theta <= -180) theta += 360;
     
     /* Compute x,y,z offset from previous position*/
     //Jackson's Notes: I suspect that this "dead reckoning" approach may be leading to significant drift over time.
     //Will experiment with using the raw gyro angles directly for orientation, and sending raw IMU data to the Jetson (Nav.py)
+    /* Adam's notes: this suspicion is correct. Working on using EKF and implementing ultrasonic correction
+       to improve position accuracy. These calculations will be replaced soon
+       The new approach is still mostly dead reckoning, but */
     xOff = x_vel*dt;
     yOff = y_vel*dt;
     zOff = z_vel*dt;
@@ -370,26 +386,11 @@ void sendIMU() {
     x += xOff;
     y += yOff;
     z += zOff;
-    
-    // Normalize yaw to 0-360
-    while (pitch < 0) pitch += 360;
-    while (pitch >= 360) pitch -= 360;
-    while (roll < 0) roll += 360;
-    while (roll >= 360) roll -= 360;
-    while (yaw < 0) yaw += 360;
-    while (yaw >= 360) yaw -= 360;
-
-    /* angle bias analysis*/
-    // Serial.printf("%0.5f,%0.5f,%0.5f,%0.5f\n", pitchKF.state(0,1), pitch, rollKF.state(0,1), roll);
-    //Serial.printf("%0.5f, %0.5f\n", (gx_offset/131.0f), (gy_offset/131.0f));
 
     // //Serial.printf("IMU:%0.2f,0.00,0.00\n", yaw);
     // Serial.printf("IMU\n");
-    Serial.printf("X: %0.2fm, Y: %0.2fm, Z: %0.2fm\n", x, y, z);
-    Serial.printf("Pitch: %0.2f, Roll: %0.2f, Yaw: %0.2f\n", pitch, roll, yaw);
-    Serial.printf("X_grav: %0.2f, Y_grav: %0.2f, Z_grav: %0.2f\n", gravityX, gravityY, gravityZ);
-    //Serial.printf("RAWX: %d, RAWY: %d, RAWZ: %d\n", ax, ay, az);
-    // Serial.printf("RawPitch: %d, RawRoll: %d, RawYaw: %d\n", gx, gy, gz);
+    Serial.printf("\nVf: %0.2fm/s\n", forwardVel);
+    Serial.printf("Theta: %0.2fdeg\n", theta);
 }
 
 void setup() {
@@ -460,6 +461,7 @@ long readUltrasonic() {
 void leftMotor(int speed) {
     // Clamp speed to valid range
     speed = constrain(speed, -255, 255);
+    leftPWM = (float) speed; //preserve the sign for KF usage
     
     if (speed >= 0) {
         digitalWrite(AIN1, HIGH);
@@ -475,6 +477,7 @@ void leftMotor(int speed) {
 void rightMotor(int speed) {
     // Clamp speed to valid range
     speed = constrain(speed, -255, 255);
+    rightPWM = (float) speed; //preserve the sign for KF usage
     
     if (speed >= 0) {
         digitalWrite(BIN1, HIGH);
@@ -491,6 +494,8 @@ void rightMotor(int speed) {
 void stopMotors() {
     leftMotor(0);
     rightMotor(0);
+    leftPWM = 0.0f;
+    rightPWM = 0.0f;
 }
 
 void loop() {
