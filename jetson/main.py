@@ -49,7 +49,7 @@ def main():
     navigator = Navigator(grid, localization)
     headless = not os.environ.get("DISPLAY")
 
-    if not headless:
+    """if not headless:
         visual = Visualizer(grid, localization, show_rays=True)
     else:
         print("[Visualizer] Running headless — visualization disabled")
@@ -59,6 +59,9 @@ def main():
                 pass
 
         visual = DummyVisualizer()
+        """
+    visual = Visualizer(grid, localization, show_rays=True, save_frames=True)
+
 
     print("SLAM components initialized.")
     print("Entering main control loop...")
