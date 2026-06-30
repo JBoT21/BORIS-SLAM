@@ -4,8 +4,6 @@
 #include "esp32-hal-ledc.h"
 #include "MPU6050.h"
 #include "esp32-hal-gpio.h"
-//#include <Adafruit_MMA8451.h>
-//#include <Adafruit_Sensor.h>
 #include <BasicLinearAlgebra.h>
 #include <cstdint>
 
@@ -80,12 +78,10 @@ typedef struct KalmanFilter
 
 // Global objects
 MPU6050 mpu(MPU6050_ADDR, &Wire);
-//Adafruit_MMA8451 mma = Adafruit_MMA8451();
 
 
 float pitch=0, roll=0, yaw = 0; //gyroscope offsets from start
 float x=0, y=0, z=0; //accelerometer calculated position from start
-float x_vel=0, y_vel=0, z_vel=0; //linear velocity in m/s from mpu
 int stationary_counter = 0; // Counter for how many consecutive samples indicate stationary
 unsigned long lastTime = 0;
 
@@ -107,6 +103,12 @@ KalmanFilter velKF;
 float x_mps2=0, y_mps2=0, z_mps2=0; //linear accelerations in mps
 float leftPWM=0, rightPWM=0; //motor PWM values
 
+/* Data to send to Jetson Nano*/
+float forwardVel = 0;
+float heading = 0;
+float ultrasonicRange = 0;
+
+/* Initialize Kalman Filter Data */
 void KalmanInit(KalmanFilter &kf, float initValue, float initBias, float qValue, float qBias, float r, ValueType type)
 {
     kf.state(0,0) = initValue;
@@ -118,6 +120,8 @@ void KalmanInit(KalmanFilter &kf, float initValue, float initBias, float qValue,
     kf.type = type;
 }
 
+/* Update a Kalman Filter given the pre-computed control input */
+/* State change and measurement values are computed depending on the ValueType*/
 void KalmanUpdate(KalmanFilter &kf, float controlInput, float dt)
 {
     /* These matrices are common to all angle measurements*/
@@ -136,7 +140,7 @@ void KalmanUpdate(KalmanFilter &kf, float controlInput, float dt)
     Q(0,0) = kf.qValue;;
     Q(1,1) = kf.qBias;
 
-    /* Take Measurement and Configure Control Matrix */
+    /* Take Measurement and Configure State Change and Control Matrices */
     if (kf.type == PITCH)
     {
         A(0,0) = 1;
@@ -198,6 +202,8 @@ void KalmanUpdate(KalmanFilter &kf, float controlInput, float dt)
     kf.P = (I - K*H) * PPred;
 }
 
+/* Start collecting accelerometer and gyroscope data*/
+/* Also perform calibration to remove static biases from the readings*/
 void initIMU() {
     int i;
     long sumX=0, sumY=0, sumZ=0, sumGX=0, sumGY=0, sumGZ=0;
@@ -205,9 +211,7 @@ void initIMU() {
     float init_pitch=0, init_roll=0, init_yaw = 0; //gyroscope offsets from start
     float dt;
 
-    // Serial.println("Initializing IMU...");
     Wire.begin(SDA_PIN, SCL_PIN);
-    // Serial.println("I2C Initialized");
     Wire.beginTransmission(MPU6050_ADDR);
     int error = Wire.endTransmission();
     
@@ -234,7 +238,6 @@ void initIMU() {
         Serial.println("MPU6050 connection test failed!");
         while (1);
     }
-    // Serial.println("MPU6050 Initialized!");
     
     // Set up the accelerometer and gyro
     mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_250);  // 250 deg/sec
@@ -275,10 +278,9 @@ void initIMU() {
     gy_offset = 0;
 
     lastTime = micros();
-    // Serial.println("IMU Ready");
 }
 
-void sendIMU() {
+void readIMU() {
     static float gravityX, gravityY, gravityZ; //gravity components in mps
     
     float xOff, yOff, zOff; //linear offsets from last position.
@@ -287,8 +289,8 @@ void sendIMU() {
     float acc_magnitude;
     float gyro_magnitude;
     int i;
-    float forwardPWM, forwardVel;
-    float rotationPWM, theta;
+    float forwardPWM;
+    float rotationPWM;
 
     /* Timekeeping */
     unsigned long now = micros();
@@ -329,12 +331,10 @@ void sendIMU() {
     /*Must be done before Kalman update to filter out gyro noise*/
     if (stationary_counter >= NUM_STATIONARY_SAMPLES)
     {
-        x_vel = 0;
-        y_vel = 0;
-        z_vel = 0;
         gyroX_dps = 0;
         gyroY_dps = 0;
         gyroZ_dps = 0;
+        forwardVel = 0;
     }
 
     KalmanUpdate(pitchKF, gyroX_dps, dt);
@@ -351,11 +351,6 @@ void sendIMU() {
         x_mps2 -= gravityX;
         y_mps2 -= gravityY;
         z_mps2 -= gravityZ;
-
-        /*Integrate velocity*/
-        x_vel += x_mps2 * dt;
-        y_vel += y_mps2 * dt;
-        z_vel += z_mps2 * dt;
     }
 
     /* Compute Forward (y-axis) velocity*/
@@ -366,84 +361,16 @@ void sendIMU() {
     /* Compute bearing (relative to starting orientation)*/
     rotationPWM = (leftPWM - rightPWM);
     KalmanUpdate(yawKF, rotationPWM, dt);
-    theta = yawKF.state(0);
+    heading = yawKF.state(0);
 
     /* theta measures bearing in degrees RIGHT of the y axis */
     /* Normalize to (-180, 180]*/
-    while (theta > 180) theta -= 360;
-    while (theta <= -180) theta += 360;
-    
-    /* Compute x,y,z offset from previous position*/
-    //Jackson's Notes: I suspect that this "dead reckoning" approach may be leading to significant drift over time.
-    //Will experiment with using the raw gyro angles directly for orientation, and sending raw IMU data to the Jetson (Nav.py)
-    /* Adam's notes: this suspicion is correct. Working on using EKF and implementing ultrasonic correction
-       to improve position accuracy. These calculations will be replaced soon
-       The new approach is still mostly dead reckoning, but */
-    xOff = x_vel*dt;
-    yOff = y_vel*dt;
-    zOff = z_vel*dt;
+    while (heading > 180) heading -= 360;
+    while (heading <= -180) heading += 360;
 
-    /* Compute total X,Y,Z positions*/
-    x += xOff;
-    y += yOff;
-    z += zOff;
-
-    // //Serial.printf("IMU:%0.2f,0.00,0.00\n", yaw);
-    // Serial.printf("IMU\n");
-    Serial.printf("\nVf: %0.2fm/s\n", forwardVel);
-    Serial.printf("Theta: %0.2fdeg\n", theta);
+    /* Forward velocity and heading will be sent in main loop*/
+    /* Final pose calculations will be computed by the Jetson Nano*/
 }
-
-void setup() {
-    Serial.begin(115200);  // Used to communicate w/ ESP32 (Sensor data output)
-    Serial2.begin(115200, SERIAL_8N1, 16, 17);  // Used to communicate w/ Jetson (Command input)
-    // Serial.println("Serial Initialized");
-
-    // Ultrasonic
-    pinMode(trigPin, OUTPUT);
-    pinMode(echoPin, INPUT);
-    // Serial.println("Ultrasonic Initialized");
-
-    // Motor pins
-    pinMode(AIN1, OUTPUT);
-    pinMode(AIN2, OUTPUT);
-    pinMode(BIN1, OUTPUT);
-    pinMode(BIN2, OUTPUT);
-    //pinMode(STBY, OUTPUT);
-    //digitalWrite(STBY, HIGH);
-    
-    // PWM channels for motors
-    ledcSetup(0, 1000, 8);
-    ledcAttachPin(PWMA, 0);
-    ledcSetup(1, 1000, 8);
-    ledcAttachPin(PWMB, 1);
-    // Serial.println("Motors Initialized");
-
-    /* Kalman Filters */
-    KalmanInit(pitchKF, 0, 0, PITCH_Q, PITCH_Q_BIAS, PITCH_R, PITCH);
-    KalmanInit(rollKF, 0, 0, ROLL_Q, ROLL_Q_BIAS, ROLL_R, ROLL);
-    KalmanInit(yawKF, 0, 0, YAW_Q, YAW_Q_BIAS, YAW_R, YAW);
-    KalmanInit(velKF, 0, 0, VEL_Q, VEL_Q_BIAS, VEL_R, VELOCITY);
-
-    // IMU
-    initIMU();
-
-    /* MMA8451 Accelerometer
-    if (!mma.begin()) {
-        Serial.println("Couldn't start MMA8451");
-        while (1);
-    }
-    Serial.println("MMA8451 found!");
-    
-    mma.setRange(MMA8451_RANGE_2_G);
-    
-    Serial.print("Range = ");
-    Serial.print(2 << mma.getRange());
-    Serial.println("G");
-}
-*/
-}
-
 
 // Ultrasonic distance reading
 long readUltrasonic() {
@@ -454,7 +381,6 @@ long readUltrasonic() {
     digitalWrite(trigPin, LOW);
 
     long duration = pulseIn(echoPin, HIGH, 60000);
-    // Serial.printf("ULTRA_RAW:%ld\n", duration);
     return duration * 0.034 / 2;  // Convert to cm
 }
 
@@ -499,95 +425,84 @@ void stopMotors() {
     rightPWM = 0.0f;
 }
 
+void setup() {
+    Serial.begin(115200);  // Used to communicate w/ computer (Sensor data output)
+    Serial2.begin(115200, SERIAL_8N1, 16, 17);  // Used to communicate w/ Jetson
+
+    // Ultrasonic
+    pinMode(trigPin, OUTPUT);
+    pinMode(echoPin, INPUT);
+    // Serial.println("Ultrasonic Initialized");
+
+    // Motor pins
+    pinMode(AIN1, OUTPUT);
+    pinMode(AIN2, OUTPUT);
+    pinMode(BIN1, OUTPUT);
+    pinMode(BIN2, OUTPUT);
+    //pinMode(STBY, OUTPUT);
+    //digitalWrite(STBY, HIGH);
+    
+    // PWM channels for motors
+    ledcSetup(0, 1000, 8);
+    ledcAttachPin(PWMA, 0);
+    ledcSetup(1, 1000, 8);
+    ledcAttachPin(PWMB, 1);
+    // Serial.println("Motors Initialized");
+
+    /* Kalman Filters */
+    KalmanInit(pitchKF, 0, 0, PITCH_Q, PITCH_Q_BIAS, PITCH_R, PITCH);
+    KalmanInit(rollKF, 0, 0, ROLL_Q, ROLL_Q_BIAS, ROLL_R, ROLL);
+    KalmanInit(yawKF, 0, 0, YAW_Q, YAW_Q_BIAS, YAW_R, YAW);
+    KalmanInit(velKF, 0, 0, VEL_Q, VEL_Q_BIAS, VEL_R, VELOCITY);
+
+    // IMU
+    initIMU();
+}
+
 void loop() {
     // Jetson commands handling
-    // if (Serial2.available()) {
-    //     char cmd = Serial2.read();
+    if (Serial2.available()) {
+        char cmd = Serial2.read();
 
-    //     if (cmd == 'F') {
-    //         leftMotor(200);
-    //         rightMotor(200);
-    //     }
-    //     else if (cmd == 'B') {
-    //         leftMotor(-200);
-    //         rightMotor(-200);
-    //     }
-    //     else if (cmd == 'L') {
-    //         leftMotor(-150);
-    //         rightMotor(150);
-    //     }
-    //     else if (cmd == 'R') {
-    //         leftMotor(150);
-    //         rightMotor(-150);
-    //     }
-    //     else if (cmd == 'S') {
-    //         stopMotors();
-    //     }
-    // }
-
-    static uint32_t lastChange = 0;
-    static uint32_t now = 0;
-    static uint8_t state = 0;
-
-    now = millis();
-
-    if (now - lastChange > 5000)
-    {
-        state = (state + 1) % 9;
-        if (state == 0)
-        {
-            leftMotor(0);
-            rightMotor(0);
+        if (cmd == 'F') {
+            leftMotor(200);
+            rightMotor(200);
         }
-        else if (state == 1)
-        {
-            leftMotor(150);
-            rightMotor(150);
+        else if (cmd == 'B') {
+            leftMotor(-200);
+            rightMotor(-200);
         }
-        else if (state == 2)
-        {
-            stopMotors();
-        }
-        else if (state == 3)
-        {
-            leftMotor(150);
-            rightMotor(-150);
-        }
-        else if (state == 4)
-        {
-            stopMotors();
-        }
-        else if (state == 5)
-        {
-            leftMotor(-150);
-            rightMotor(-150);
-        }
-        else if (state == 6)
-        {
-            stopMotors();
-        }
-        else if (state == 7)
-        {
+        else if (cmd == 'L') {
             leftMotor(-150);
             rightMotor(150);
         }
-        else if (state == 8)
-        {
+        else if (cmd == 'R') {
+            leftMotor(150);
+            rightMotor(-150);
+        }
+        else if (cmd == 'S') {
             stopMotors();
         }
     }
 
-    // Send ultrasonic data
+    static uint32_t now = 0;
+
+    now = millis();
+
+    // Read ultrasonic data
     long distance = readUltrasonic();
-    // Serial.printf("ULTRASONIC:%ld\n", distance);
-    // Serial.printf("\n");// Blank line for better readability
 
     // Send IMU (gyro-based yaw)
-    sendIMU();
+    readIMU();
 
-    // Send accelerometer data
-   // mma.read();
-    //Serial.printf("MMA8451:%0.2f,%0.2f,%0.2f\n", mma.x_g, mma.y_g, mma.z_g);
+    /* Send data to Jetson nano for position determination and SLAM map building*/
+    /* 
+        Jetson needs the following data:
+        1. Forward Velocity
+        2. Heading
+        3. Ultrasonic range
+    */
+    Serial2.printf("%0.4f,%0.4f,%ld\n", forwardVel,heading,distance);
     
     delay(50);
 }
