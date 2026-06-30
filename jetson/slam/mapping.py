@@ -38,7 +38,7 @@ class MappingEngine:
         # March along the ray
         steps = int(dist)
 
-        # --- FREE SPACE CARVING ---
+        # FREE SPACE CARVING
         for i in range(1, steps):
             fx = int(x + i * dx)
             fy = int(y + i * dy)
