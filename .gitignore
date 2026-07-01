@@ -8,6 +8,7 @@
 .vscode/launch.json
 .vscode/ipch/
 src/ELEGOO*/
+.clangd
 
 # Clangd index
 .clangd/
@@ -18,3 +19,9 @@ __pycache__/
 
 # macOS metadata
 .DS_Store
+
+#arch linux metadata
+compile_commands.json
+
+#collected data from serial monitors
+logs/

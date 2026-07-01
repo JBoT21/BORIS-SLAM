@@ -16,7 +16,7 @@ loop:
     update localization
     update map
     decide next movement
-    send movement command
+    send movement command (with kalman filter prediction)
     visualize (optional)
 
 """
