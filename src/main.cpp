@@ -234,8 +234,5 @@ void loop() {
     sendIMU();
 
     // Send accelerometer data
-   // mma.read();
-    //Serial.printf("MMA8451:%0.2f,%0.2f,%0.2f\n", mma.x_g, mma.y_g, mma.z_g);
-    
     delay(50);
 }

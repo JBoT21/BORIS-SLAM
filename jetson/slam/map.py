@@ -20,7 +20,7 @@ class OccupancyGrid:
         2 = occupied
     """
 
-    def __init__(self, size=200):
+    def __init__(self, size=300): #Right now, size is 300
         self.size = size
         self.grid = np.zeros((size, size), dtype=np.uint8)
 

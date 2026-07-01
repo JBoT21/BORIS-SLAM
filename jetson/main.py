@@ -43,9 +43,9 @@ def main():
     motion = MotionController(serial)
 
     print("Initializing SLAM components...")
-    grid = OccupancyGrid(size=200)
+    grid = OccupancyGrid(size=300)
     localization = Localization(grid)
-    mapper = MappingEngine(grid, localization)
+    mapper = MappingEngine(grid, localization, max_range=150)  # max range in cm
     navigator = Navigator(grid, localization)
     headless = not os.environ.get("DISPLAY")
 
