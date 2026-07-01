@@ -32,7 +32,7 @@ from slam.map import OccupancyGrid
 from slam.localization import Localization
 from slam.mapping import MappingEngine
 from slam.nav import Navigator
-from slam.visualize import Visualizer   # future development
+from slam.visualize import Visualizer   
 
 def main():
     print("Starting Jetson Nano + ESP32 SLAM System!!!!")
@@ -43,7 +43,7 @@ def main():
     motion = MotionController(serial)
 
     print("Initializing SLAM components...")
-    grid = OccupancyGrid(size=300)
+    grid = OccupancyGrid(size=20)
     localization = Localization(grid)
     mapper = MappingEngine(grid, localization, max_range=150)  # max range in cm
     navigator = Navigator(grid, localization)

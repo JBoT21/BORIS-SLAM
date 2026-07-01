@@ -158,7 +158,7 @@ long readUltrasonic() {
     digitalWrite(trigPin, LOW);
 
     long duration = pulseIn(echoPin, HIGH, 60000);
-    Serial.printf("ULTRA_RAW:%ld\n", duration);
+    //Serial.printf("ULTRA_RAW:%ld\n", duration);
     return duration * 0.034 / 2;  // Convert to cm
 }
 
