@@ -13,6 +13,7 @@ class MappingEngine:
         self.cell_size_cm = 30.0
 
     def update_from_ultrasonic(self, distance_cm):
+        print(f"[MappingEngine] Ultrasonic reading: {distance_cm} cm")
         if distance_cm is None or distance_cm <= 0:
             self.last_distance = None
             return
