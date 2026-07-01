@@ -299,18 +299,10 @@ void readIMU() {
 
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
-    /* Apply calibrated offsets to remove per-axis bias*/
-    ax -= ax_offset;
-    ay -= ay_offset;
-    az -= az_offset;
-    gx -= gx_offset;
-    gy -= gy_offset;
-    gz -= gz_offset;
-    
-    /* Convert 3-axis acceleration to m/s^2*/
-    x_mps2 = (ax / 16384.0f * G);
-    y_mps2 = (ay / 16384.0f * G);
-    z_mps2 = (az / 16384.0f * G);
+void setup() {
+    Serial.begin(115200);  // Used to communicate w/ ESP32 (Sensor data output)
+    //Serial2.begin(115200, SERIAL_8N1, 16, 17);  // Used to communicate w/ Jetson (Command input)
+    Serial.println("Serial Initialized");
 
     // Convert raw gyro values to degrees per second (250 deg/sec range)
     gyroX_dps = gx / 131.0f;
@@ -461,8 +453,8 @@ void setup() {
 
 void loop() {
     // Jetson commands handling
-    if (Serial2.available()) {
-        char cmd = Serial2.read();
+    if (Serial.available()) { //Was Serial2.available()
+        char cmd = Serial.read();
 
         if (cmd == 'F') {
             leftMotor(200);
@@ -495,14 +487,6 @@ void loop() {
     // Send IMU (gyro-based yaw)
     readIMU();
 
-    /* Send data to Jetson nano for position determination and SLAM map building*/
-    /* 
-        Jetson needs the following data:
-        1. Forward Velocity
-        2. Heading
-        3. Ultrasonic range
-    */
-    Serial2.printf("%0.4f,%0.4f,%ld\n", forwardVel,heading,distance);
-    
+    // Send accelerometer data
     delay(50);
 }

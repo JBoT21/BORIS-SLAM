@@ -20,6 +20,7 @@ loop:
     visualize (optional)
 
 """
+import os
 import time
 #Hardware interfaces
 from serial_link import *
@@ -38,24 +39,42 @@ def main():
     print("Initializing hardware interfaces...")
 
     serial = SerialLink(port="/dev/ttyUSB0", baud=115200)
+    #Changed to work with UART
     motion = MotionController(serial)
 
     print("Initializing SLAM components...")
-    grid = OccupancyGrid(size=200)
+    grid = OccupancyGrid(size=300)
     localization = Localization(grid)
-    mapper = MappingEngine(grid, localization)
+    mapper = MappingEngine(grid, localization, max_range=150)  # max range in cm
     navigator = Navigator(grid, localization)
-    visual = Visualizer(grid, localization, show_rays=True)
+    headless = not os.environ.get("DISPLAY")
+
+    """if not headless:
+        visual = Visualizer(grid, localization, show_rays=True)
+    else:
+        print("[Visualizer] Running headless — visualization disabled")
+
+        class DummyVisualizer:
+            def update(self):
+                pass
+
+        visual = DummyVisualizer()
+        """
+    visual = Visualizer(grid, localization, show_rays=True, save_frames=True)
+
 
     print("SLAM components initialized.")
     print("Entering main control loop...")
+
 
     LoopHZ = 10
     LoopDT = 1.0 / LoopHZ
 
     try:
+        print("=== LOOP TICK ===")
         while True:
             loop_start = time.time()
+            print("Loop start")
 
             # 1. Read sensors (ultrasonic + IMU)
             ultra, imu = serial.read_sensors()
@@ -67,19 +86,25 @@ def main():
 
             # 2. Predict localization 
             localization.predict(dt=LoopDT)
+            print("Localization predicted")
 
             # 3. Update map
             mapper.integrate()
+            print("Map updated")
 
             # 4. Navigation decision
             command = navigator.decide_next_move()
+            print(f"[CMD] Sending command to ESP32: {command}", flush=True)
             motion.execute(command)
+            print("Motion commanded")
 
             # Notify localization of movement
             localization.notify_motion(command, speed=120)
+            print("Localization notified of motion")
 
             # 5. Visualization
             visual.update()
+            print("Visualization updated")
 
             # 6. Loop timing
             elapsed = time.time() - loop_start
@@ -88,10 +113,13 @@ def main():
             else:
                 print(f"[WARN] Loop overran: {elapsed:.3f}s (target {LoopDT:.3f}s)")
 
-    except KeyboardInterrupt:
-        print("Shutting down SLAM system...")
+
+    #Was KeyboardInterrupt
+    except Exception as e:
+        print("ERROR:", e)
         motion.stop()
         serial.close()
+        raise
 
 
 if __name__ == "__main__":

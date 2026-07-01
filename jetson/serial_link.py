@@ -10,7 +10,7 @@ class SerialLink:
     """
 
     def __init__(self, port="/dev/ttyUSB0", baud=115200, timeout=0.1):
-        self.ser = serial.Serial(port, baud, timeout=timeout)
+        self.ser = serial.Serial(port, baud, timeout=timeout, rtscts=False, dsrdtr=False, xonxoff=False)
         time.sleep(2)  # allows the ESP32 to boot
 
         self.last_ultrasonic = None
