@@ -28,7 +28,8 @@ class Navigator:
 
         now = time.time()
 
-        
+        print("[NAV DEBUG] pose=", x, y, "ahead=", ahead, "cells=", [self.grid.get(cx, cy) for cx, cy in ahead])
+
         # STATE: FORWARD
         if self.state == "FORWARD":
             if obstacle:

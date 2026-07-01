@@ -11,8 +11,8 @@ class Localization:
     def __init__(self, grid, start_x=100, start_y=100, start_heading=0):
         self.grid = grid
         # Continuous pose
-        self.x = float(start_x)
-        self.y = float(start_y)
+        self.x = float(start_x) / 30
+        self.y = float(start_y) / 30
         self.heading = float(start_heading)
         # Motion state
         self.last_command = "S"
@@ -50,8 +50,8 @@ class Localization:
             dx = dy = 0.0
 
         # Update continuous pose
-        self.x += dx
-        self.y += dy
+        self.x += dx / 30 
+        self.y += dy / 30
 
         # Clamp to grid bounds (float-safe)
         self.x = max(0.0, min(self.grid.size - 1, self.x))
