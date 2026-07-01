@@ -27,7 +27,6 @@ class Navigator:
         free = self._is_free(ahead)
 
         now = time.time()
-
         print("[NAV DEBUG] pose=", x, y, "ahead=", ahead, "cells=", [self.grid.get(cx, cy) for cx, cy in ahead])
 
         # STATE: FORWARD
