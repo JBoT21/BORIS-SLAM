@@ -6,6 +6,8 @@ class Localization:
     Maintains robot pose:
     x, y in continuous coordinates (floats)
     heading in degrees (0° = +X direction)
+
+    x,y,heading will be computed with an EKF combining forward velocity, IMU yaw, and US ranging relative to the map
     """
 
     def __init__(self, grid, start_x=100, start_y=100, start_heading=0):
