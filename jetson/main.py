@@ -78,6 +78,7 @@ def main():
 
             # 1. Read sensors (ultrasonic + IMU)
             ultra, imu = serial.read_sensors()
+            print("[SENSORS DEBUG] ultra =", ultra, "imu =", imu)
             if ultra is not None:
                 mapper.update_from_ultrasonic(ultra)
                 print(f"[ULTRA DEBUG] Ultrasonic reading: {ultra} cm")
