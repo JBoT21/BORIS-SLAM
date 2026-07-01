@@ -80,6 +80,7 @@ def main():
             ultra, imu = serial.read_sensors()
             if ultra is not None:
                 mapper.update_from_ultrasonic(ultra)
+                print(f"Ultrasonic reading: {ultra} cm")
                 localization.last_distance = ultra  # for visualizer
             if imu is not None:
                 localization.update_from_imu(imu)
