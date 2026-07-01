@@ -39,7 +39,7 @@ class MappingEngine:
         dy = math.sin(heading)
 
         #Free space marking
-        for i in range(1, steps):
+        for i in range(0, steps):
             fx = int(x + i * dx)
             fy = int(y + i * dy)
 
