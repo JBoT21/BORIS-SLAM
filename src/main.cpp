@@ -299,6 +299,77 @@ void readIMU() {
 
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
+    /* Apply calibrated offsets to remove per-axis bias*/
+    ax -= ax_offset;
+    ay -= ay_offset;
+    az -= az_offset;
+    gx -= gx_offset;
+    gy -= gy_offset;
+    gz -= gz_offset;
+    
+    /* Convert 3-axis acceleration to m/s^2*/
+    x_mps2 = (ax / 16384.0f * G);
+    y_mps2 = (ay / 16384.0f * G);
+    z_mps2 = (az / 16384.0f * G);
+
+    // Convert raw gyro values to degrees per second (250 deg/sec range)
+    gyroX_dps = gx / 131.0f;
+    gyroY_dps = gy / 131.0f;
+    gyroZ_dps = gz / 131.0f;
+
+    /* Compute total acceleration magnitude in m/s^2*/
+    acc_magnitude = sqrt(x_mps2*x_mps2 + y_mps2*y_mps2 + z_mps2*z_mps2) - G; // Subtract gravity to get net acceleration
+    gyro_magnitude = sqrt(gyroX_dps*gyroX_dps + gyroY_dps*gyroY_dps + gyroZ_dps*gyroZ_dps);
+
+    /* Detect stationary state */
+    if (gyro_magnitude < GYRO_THRESHOLD && acc_magnitude < ACC_THRESHOLD)
+        stationary_counter++;
+    else
+        stationary_counter = 0; // Reset counter if we detect movement
+    
+    /*Set all velocities to zero if stationary*/
+    /*Must be done before Kalman update to filter out gyro noise*/
+    if (stationary_counter >= NUM_STATIONARY_SAMPLES)
+    {
+        gyroX_dps = 0;
+        gyroY_dps = 0;
+        gyroZ_dps = 0;
+        forwardVel = 0;
+    }
+
+    KalmanUpdate(pitchKF, gyroX_dps, dt);
+    KalmanUpdate(rollKF, gyroY_dps, dt);
+    pitch = pitchKF.state(0);
+    roll = rollKF.state(0);
+
+    /* Use the Kalman-adjusted orientation to determine gravity if moving */
+    if (stationary_counter < NUM_STATIONARY_SAMPLES)
+    {
+        gravityX = -sinf(roll * DEG_TO_RAD) * G;
+        gravityY = sinf(pitch * DEG_TO_RAD) * cosf(roll * DEG_TO_RAD) * G;
+        gravityZ = cosf(roll * DEG_TO_RAD) * cosf(pitch * DEG_TO_RAD) * G;
+        x_mps2 -= gravityX;
+        y_mps2 -= gravityY;
+        z_mps2 -= gravityZ;
+    }
+
+    /* Compute Forward (y-axis) velocity*/
+    forwardPWM = (leftPWM+rightPWM) / 2.0;
+    KalmanUpdate(velKF, forwardPWM, dt);
+    forwardVel = velKF.state(0);
+
+    /* Compute bearing (relative to starting orientation)*/
+    rotationPWM = (leftPWM - rightPWM);
+    KalmanUpdate(yawKF, rotationPWM, dt);
+    heading = yawKF.state(0);
+
+    /* theta measures bearing in degrees RIGHT of the y axis */
+    /* Normalize to (-180, 180]*/
+    while (heading > 180) heading -= 360;
+    while (heading <= -180) heading += 360;
+
+    /* Forward velocity and heading will be sent in main loop*/
+    /* Final pose calculations will be computed by the Jetson Nano*/
 }
 
 // Ultrasonic distance reading
@@ -356,12 +427,12 @@ void stopMotors() {
 
 void setup() {
     Serial.begin(115200);  // Used to communicate w/ computer (Sensor data output)
-   // Serial2.begin(115200, SERIAL_8N1, 16, 17);  // Used to communicate w/ Jetson
+    Serial2.begin(115200, SERIAL_8N1, 16, 17);  // Used to communicate w/ Jetson
 
     // Ultrasonic
     pinMode(trigPin, OUTPUT);
     pinMode(echoPin, INPUT);
-    Serial.println("Ultrasonic Initialized");
+    // Serial.println("Ultrasonic Initialized");
 
     // Motor pins
     pinMode(AIN1, OUTPUT);
@@ -376,7 +447,7 @@ void setup() {
     ledcAttachPin(PWMA, 0);
     ledcSetup(1, 1000, 8);
     ledcAttachPin(PWMB, 1);
-    Serial.println("Motors Initialized");
+    // Serial.println("Motors Initialized");
 
     /* Kalman Filters */
     KalmanInit(pitchKF, 0, 0, PITCH_Q, PITCH_Q_BIAS, PITCH_R, PITCH);
@@ -390,8 +461,8 @@ void setup() {
 
 void loop() {
     // Jetson commands handling
-    if (Serial.available()) { 
-        char cmd = Serial.read();
+    if (Serial2.available()) {
+        char cmd = Serial2.read();
 
         if (cmd == 'F') {
             leftMotor(200);
@@ -420,18 +491,19 @@ void loop() {
 
     // Read ultrasonic data
     long distance = readUltrasonic();
-    Serial.printf("ULTRASONIC:%ld\n", distance);
+    Serial.printf("Ultrasonic: %ld cm\n", distance);
 
     // Send IMU (gyro-based yaw)
     readIMU();
-    float yaw   = yawKF.state(0,0);
-    float pitch = pitchKF.state(0,0);
-    float roll  = rollKF.state(0,0);
-    Serial.printf("IMU:%.2f,%.2f,%.2f\n", yaw, pitch, roll);
 
-
-
-
-    // Send accelerometer data
+    /* Send data to Jetson nano for position determination and SLAM map building*/
+    /* 
+        Jetson needs the following data:
+        1. Forward Velocity
+        2. Heading
+        3. Ultrasonic range
+    */
+    Serial.printf("IMU: %0.4f,%0.4f,%ld\n", forwardVel,heading,distance);
+    
     delay(50);
 }
