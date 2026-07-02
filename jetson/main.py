@@ -60,7 +60,7 @@ def main():
 
         visual = DummyVisualizer()
         """
-    visual = Visualizer(grid, localization, show_rays=True, save_frames=True)
+    visual = Visualizer(grid, localization, show_rays=True, save_frames=False)
 
 
     print("SLAM components initialized.")
