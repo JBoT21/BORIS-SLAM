@@ -389,7 +389,7 @@ void setup() {
 
 void loop() {
     // Jetson commands handling
-    if (Serial.available()) { //Was Serial2.available()
+    if (Serial.available()) { 
         char cmd = Serial.read();
 
         if (cmd == 'F') {
@@ -424,6 +424,8 @@ void loop() {
 
     // Send IMU (gyro-based yaw)
     readIMU();
+    Serial.printf("IMU:%.2f,%.2f,%.2f\n", yawKF.state(0,0), pitchKF.state(0,0), rollKF.state(0,0));
+
 
     // Send accelerometer data
     delay(50);
