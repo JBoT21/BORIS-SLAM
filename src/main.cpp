@@ -503,7 +503,9 @@ void loop() {
         2. Heading
         3. Ultrasonic range
     */
-    Serial.printf("IMU: %0.4f,%0.4f,%ld\n", forwardVel,heading,distance);
+    //Serial.printf("IMU: %0.4f,%0.4f,%ld\n", forwardVel,heading,distance);
+    
+    Serial.printf("IMU: %0.4f,%0.4f,%ld\n", pitchKF.state(0), rollKF.state(0), heading);
     
     delay(50);
 }
