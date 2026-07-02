@@ -491,7 +491,7 @@ void loop() {
 
     // Read ultrasonic data
     long distance = readUltrasonic();
-    Serial.printf("Ultrasonic: %ld cm\n", distance);
+    Serial.printf("ULTRASONIC: %ld cm\n", distance);
 
     // Send IMU (gyro-based yaw)
     readIMU();
