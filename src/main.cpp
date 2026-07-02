@@ -298,6 +298,7 @@ void readIMU() {
     lastTime = now;
 
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
 }
 
 // Ultrasonic distance reading
@@ -419,12 +420,22 @@ void loop() {
 
     // Read ultrasonic data
     long distance = readUltrasonic();
-    Serial.printf("ULTRASONIC:%ld\n", distance);
+    //Serial.printf("ULTRASONIC:%ld\n", distance);
 
 
     // Send IMU (gyro-based yaw)
     readIMU();
-    Serial.printf("IMU:%.2f,%.2f,%.2f\n", yawKF.state(0,0), pitchKF.state(0,0), rollKF.state(0,0));
+    float yaw   = yawKF.state(0,0);
+    float pitch = pitchKF.state(0,0);
+    float roll  = rollKF.state(0,0);
+   // Serial.printf("IMU:%.2f,%.2f,%.2f\n", yaw, pitch, roll);
+
+    Serial.printf("U:%ld,Y:%.2f,P:%.2f,R:%.2f\n",
+              distance,
+              yawKF,
+              pitchKF,
+              rollKF);
+
 
 
     // Send accelerometer data
