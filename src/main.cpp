@@ -80,6 +80,7 @@ typedef struct KalmanFilter
 MPU6050 mpu(MPU6050_ADDR, &Wire);
 
 
+
 float pitch=0, roll=0, yaw = 0; //gyroscope offsets from start
 float x=0, y=0, z=0; //accelerometer calculated position from start
 int stationary_counter = 0; // Counter for how many consecutive samples indicate stationary
@@ -107,6 +108,8 @@ float leftPWM=0, rightPWM=0; //motor PWM values
 float forwardVel = 0;
 float heading = 0;
 float ultrasonicRange = 0;
+float heading_slam = 0;
+
 
 /* Initialize Kalman Filter Data */
 void KalmanInit(KalmanFilter &kf, float initValue, float initBias, float qValue, float qBias, float r, ValueType type)
@@ -360,13 +363,21 @@ void readIMU() {
 
     /* Compute bearing (relative to starting orientation)*/
     rotationPWM = (leftPWM - rightPWM);
-    KalmanUpdate(yawKF, rotationPWM, dt);
+    KalmanUpdate(yawKF, gyroZ_dps, dt); //Was rotationPWM, but that was causing yaw errors. Using gyroZ_dps instead
     heading = yawKF.state(0);
 
     /* theta measures bearing in degrees RIGHT of the y axis */
     /* Normalize to (-180, 180]*/
-    while (heading > 180) heading -= 360;
-    while (heading <= -180) heading += 360;
+    //while (heading > 180) heading -= 360;
+    //while (heading <= -180) heading += 360;
+
+    while (heading < 0) heading += 360;
+    while (heading >= 360) heading -= 360;
+    //Attempting to normalize to [0, 360) instead of (-180, 180]
+
+    heading_slam = heading + 90.0f;
+    if (heading_slam >= 360.0f) heading_slam -= 360.0f;
+    if (heading_slam < 0.0f)    heading_slam += 360.0f; 
 
     /* Forward velocity and heading will be sent in main loop*/
     /* Final pose calculations will be computed by the Jetson Nano*/
@@ -508,7 +519,7 @@ void loop() {
     //Serial.printf("IMU: %0.4f,%0.4f,%0.4f\n", pitchKF.state(0), rollKF.state(0), heading);
 
     Serial.printf("U:%ld,Y:%.2f,P:%.2f,R:%.2f\n",
-              distance, heading, pitchKF.state(0), rollKF.state(0));
+              distance, heading_slam, pitchKF.state(0), rollKF.state(0));
     
     delay(50);
 }
