@@ -426,8 +426,8 @@ void stopMotors() {
 }
 
 void setup() {
-    //Serial.begin(115200);  // Used to communicate w/ computer (Sensor data output)
-    Serial2.begin(115200, SERIAL_8N1, 16, 17);  // Used to communicate w/ Jetson
+    Serial.begin(115200);  // Used to communicate w/ computer (Sensor data output)
+    //Serial2.begin(115200, SERIAL_8N1, 16, 17);  // Used to communicate w/ Jetson
 
     // Ultrasonic
     pinMode(trigPin, OUTPUT);
@@ -461,8 +461,8 @@ void setup() {
 
 void loop() {
     // Jetson commands handling
-    if (Serial2.available()) {
-        char cmd = Serial2.read();
+    if (Serial.available()) {
+        char cmd = Serial.read();
 
         if (cmd == 'F') {
             leftMotor(200);
@@ -507,7 +507,7 @@ void loop() {
 
     //Serial.printf("IMU: %0.4f,%0.4f,%0.4f\n", pitchKF.state(0), rollKF.state(0), heading);
 
-    Serial2.printf("U:%ld,Y:%.2f,P:%.2f,R:%.2f\n",
+    Serial.printf("U:%ld,Y:%.2f,P:%.2f,R:%.2f\n",
               distance, heading, pitchKF.state(0), rollKF.state(0));
     
     delay(50);
