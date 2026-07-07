@@ -106,7 +106,7 @@ float leftPWM=0, rightPWM=0; //motor PWM values
 
 /* Data to send to Jetson Nano*/
 float forwardVel = 0;
-float heading = 0;
+float heading = 20;
 float ultrasonicRange = 0;
 float heading_slam = 0;
 
@@ -371,13 +371,7 @@ void readIMU() {
     while (heading > 180) heading -= 360; 
     while (heading <= -180) heading += 360;
 
-    //while (heading < 0) heading += 360;
-    //while (heading >= 360) heading -= 360;
-    //Attempting to normalize to [0, 360) instead of (-180, 180]
 
-    heading_slam = heading;
-    if (heading_slam >= 180.0f) heading_slam -= 180.0f;
-    if (heading_slam < 0.0f)    heading_slam += 180.0f; 
 
     /* Forward velocity and heading will be sent in main loop*/
     /* Final pose calculations will be computed by the Jetson Nano*/
