@@ -48,7 +48,7 @@ const int echoPin = 15;
 /* TODO the YAW parameters are almost certainly wrong*/
 #define YAW_Q 0.05f
 #define YAW_Q_BIAS 0.005f
-#define YAW_R 0.02f
+#define YAW_R 0.005f
 /* TODO the VEL parameters are almost certainly wrong*/
 #define VEL_Q 0.1f
 #define VEL_Q_BIAS 0.01f
