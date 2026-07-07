@@ -368,16 +368,16 @@ void readIMU() {
 
     /* theta measures bearing in degrees RIGHT of the y axis */
     /* Normalize to (-180, 180]*/
-    //while (heading > 180) heading -= 360;
-    //while (heading <= -180) heading += 360;
+    while (heading > 180) heading -= 360; 
+    while (heading <= -180) heading += 360;
 
-    while (heading < 0) heading += 360;
-    while (heading >= 360) heading -= 360;
+    //while (heading < 0) heading += 360;
+    //while (heading >= 360) heading -= 360;
     //Attempting to normalize to [0, 360) instead of (-180, 180]
 
     heading_slam = heading + 90.0f;
-    if (heading_slam >= 360.0f) heading_slam -= 360.0f;
-    if (heading_slam < 0.0f)    heading_slam += 360.0f; 
+    if (heading_slam >= 180.0f) heading_slam -= 180.0f;
+    if (heading_slam < 0.0f)    heading_slam += 180.0f; 
 
     /* Forward velocity and heading will be sent in main loop*/
     /* Final pose calculations will be computed by the Jetson Nano*/
@@ -438,7 +438,6 @@ void stopMotors() {
 
 void setup() {
     Serial.begin(115200);  // Used to communicate w/ computer (Sensor data output)
-    //Serial2.begin(115200, SERIAL_8N1, 16, 17);  // Used to communicate w/ Jetson
 
     // Ultrasonic
     pinMode(trigPin, OUTPUT);
