@@ -375,7 +375,7 @@ void readIMU() {
     //while (heading >= 360) heading -= 360;
     //Attempting to normalize to [0, 360) instead of (-180, 180]
 
-    heading_slam = heading + 90.0f;
+    heading_slam = heading;
     if (heading_slam >= 180.0f) heading_slam -= 180.0f;
     if (heading_slam < 0.0f)    heading_slam += 180.0f; 
 
@@ -518,7 +518,7 @@ void loop() {
     //Serial.printf("IMU: %0.4f,%0.4f,%0.4f\n", pitchKF.state(0), rollKF.state(0), heading);
 
     Serial.printf("U:%ld,Y:%.2f,P:%.2f,R:%.2f\n",
-              distance, heading_slam, pitchKF.state(0), rollKF.state(0));
+              distance, heading, pitchKF.state(0), rollKF.state(0));
     
     delay(50);
 }
