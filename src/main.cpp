@@ -103,12 +103,12 @@ KalmanFilter velKF;
 /* Kalman Filter Global data */
 float x_mps2=0, y_mps2=0, z_mps2=0; //linear accelerations in mps
 float leftPWM=0, rightPWM=0; //motor PWM values
+float gyroZ_dps=0;
 
 /* Data to send to Jetson Nano*/
 float forwardVel = 0;
-float heading = 20;
+float heading = 0;
 float ultrasonicRange = 0;
-float heading_slam = 0;
 
 
 /* Initialize Kalman Filter Data */
@@ -176,6 +176,7 @@ void KalmanUpdate(KalmanFilter &kf, float controlInput, float dt)
         A(1,0) = 0;
         A(1, 1) = 1;
         B(0) = K_ROTATION * dt;
+        z = gyroZ_dps * dt + kf.state(0);
     }
     else if (kf.type == VELOCITY)
     {
@@ -287,7 +288,7 @@ void readIMU() {
     static float gravityX, gravityY, gravityZ; //gravity components in mps
     
     float xOff, yOff, zOff; //linear offsets from last position.
-    float gyroX_dps, gyroY_dps, gyroZ_dps;
+    float gyroX_dps, gyroY_dps;
     float dt;
     float acc_magnitude;
     float gyro_magnitude;
@@ -363,7 +364,7 @@ void readIMU() {
 
     /* Compute bearing (relative to starting orientation)*/
     rotationPWM = (leftPWM - rightPWM);
-    KalmanUpdate(yawKF, gyroZ_dps, dt); //Was rotationPWM, but that was causing yaw errors. Using gyroZ_dps instead
+    KalmanUpdate(yawKF, rotationPWM, dt);
     heading = yawKF.state(0);
 
     /* theta measures bearing in degrees RIGHT of the y axis */
