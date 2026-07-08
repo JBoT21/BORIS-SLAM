@@ -32,8 +32,22 @@ class Navigator:
         # STATE: FORWARD
         if self.state == "FORWARD":
             if obstacle:
-                # pick a turn direction based on heading
-                self.state = "TURN_LEFT" if (heading % 360) < 180 else "TURN_RIGHT"
+                # Check if left or right is free/unknown
+                left_cells = self._cells_to_left(x, y, heading)
+                right_cells = self._cells_to_right(x, y, heading)
+                
+                left_free = self._is_free(left_cells) or self._is_unknown(left_cells)
+                right_free = self._is_free(right_cells) or self._is_unknown(right_cells)
+                
+                # Prefer free space, but go left as tiebreaker
+                if left_free and not right_free:
+                    self.state = "TURN_LEFT"
+                elif right_free and not left_free:
+                    self.state = "TURN_RIGHT"
+                else:
+                    # Both free or both blocked - prefer left (arbitrary choice)
+                    self.state = "TURN_LEFT"
+                
                 self.state_start = now
                 return "L" if self.state == "TURN_LEFT" else "R"
 
@@ -77,6 +91,31 @@ class Navigator:
     def _cells_ahead(self, x, y, heading):
         cells = []
         rad = math.radians(heading)
+        for d in range(1, 4):
+            cx = int(x + d * math.cos(rad))
+            cy = int(y + d * math.sin(rad))
+            if self.grid.in_bounds(cx, cy):
+                cells.append((cx, cy))
+        return cells
+    
+    #Get cells 90 degrees to the left
+    def _cells_to_left(self, x, y, heading):
+        left_heading = (heading + 90) % 360
+        rad = math.radians(left_heading)
+        cells = []
+        for d in range(1, 4):
+            cx = int(x + d * math.cos(rad))
+            cy = int(y + d * math.sin(rad))
+            if self.grid.in_bounds(cx, cy):
+                cells.append((cx, cy))
+        return cells
+    
+        #Get cells 90 degrees to the right
+    def _cells_to_right(self, x, y, heading):
+       
+        right_heading = (heading - 90) % 360
+        rad = math.radians(right_heading)
+        cells = []
         for d in range(1, 4):
             cx = int(x + d * math.cos(rad))
             cy = int(y + d * math.sin(rad))
