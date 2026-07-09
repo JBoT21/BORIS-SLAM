@@ -1,3 +1,89 @@
+import pygame
+import numpy as np
+
+# Colors
+COLOR_UNKNOWN = (100, 100, 100)
+COLOR_FREE = (200, 200, 200)
+COLOR_OCCUPIED = (0, 0, 0)
+COLOR_ROBOT = (255, 0, 0)
+
+# Heading arrows
+ARROWS = {
+    0: (0, -1),   # North
+    1: (1, 0),    # East
+    2: (0, 1),    # South
+    3: (-1, 0),   # West
+}
+
+CELL_SIZE = 12  # pixels per cell
+
+class Visualizer:
+    def __init__(self, mapper):
+        pygame.init()
+        self.mapper = mapper
+
+        self.width = mapper.grid.shape[1] * CELL_SIZE
+        self.height = mapper.grid.shape[0] * CELL_SIZE
+
+        self.screen = pygame.display.set_mode((self.width, self.height))
+        pygame.display.set_caption("BORIS SLAM-Lite Visualizer")
+
+    def draw(self, heading_index):
+        self.screen.fill((50, 50, 50))
+        grid = self.mapper.get_grid()
+
+        # Draw occupancy grid
+        for y in range(grid.shape[0]):
+            for x in range(grid.shape[1]):
+                val = grid[y][x]
+                if val == -1:
+                    color = COLOR_UNKNOWN
+                elif val == 0:
+                    color = COLOR_FREE
+                else:
+                    color = COLOR_OCCUPIED
+
+                pygame.draw.rect(
+                    self.screen,
+                    color,
+                    (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+                )
+
+        # Draw robot
+        rx, ry = self.mapper.rx, self.mapper.ry
+        pygame.draw.rect(
+            self.screen,
+            COLOR_ROBOT,
+            (rx * CELL_SIZE, ry * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+        )
+
+        # Draw heading arrow
+        dx, dy = ARROWS[heading_index]
+        arrow_x = rx * CELL_SIZE + CELL_SIZE // 2
+        arrow_y = ry * CELL_SIZE + CELL_SIZE // 2
+        end_x = arrow_x + dx * CELL_SIZE
+        end_y = arrow_y + dy * CELL_SIZE
+
+        pygame.draw.line(
+            self.screen,
+            (255, 0, 0),
+            (arrow_x, arrow_y),
+            (end_x, end_y),
+            3
+        )
+
+        pygame.display.flip()
+
+    def update(self, heading_index):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+
+        self.draw(heading_index)
+
+
+
 """
 Responsibilities:
 
@@ -5,7 +91,7 @@ Responsibilities:
 2. Show robot pose
 3. Show sensor rays
 4. Save frames for debugging (headless-safe)
-"""
+
 
 import matplotlib
 matplotlib.use("Agg")   # IMPORTANT: headless backend for Jetson/systemd
@@ -16,14 +102,13 @@ import os
 
 
 class Visualizer:
-    """
     Displays:
         - Occupancy grid
         - Robot pose
         - Heading arrow
         - Sensor rays (optional)
         - Saves frames (optional)
-    """
+
 
     def __init__(self, grid, localization, show_rays=False, save_frames=False):
         self.grid = grid
@@ -89,3 +174,4 @@ class Visualizer:
             filename = f"imgs/frame_{self.frame_id:05d}.png"
             self.fig.savefig(filename, dpi=120)
             self.frame_id += 1
+"""
