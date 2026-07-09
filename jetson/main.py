@@ -1,8 +1,8 @@
 import serial
 import time
 
-from mapping import Mapper
-from visualizer import Visualizer
+from slam.mapping import MappingEngine
+from slam.nav import Navigator
 
 # Adjust to your Jetson's serial device
 SERIAL_PORT = "/dev/ttyUSB0"

@@ -23,7 +23,7 @@ DIRS = {
     3: (-1, 0),   # West
 }
 
-class Mapper:
+class MappingEngine:
     def __init__(self):
         self.grid = np.full((GRID_H, GRID_W), UNKNOWN, dtype=np.int8)
 
