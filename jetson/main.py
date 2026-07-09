@@ -1,15 +1,70 @@
+import serial
+import time
+
+from mapping import Mapper
+from visualizer import Visualizer
+
+# Adjust to your Jetson's serial device
+SERIAL_PORT = "/dev/ttyUSB0"
+BAUD = 115200
+
+def parse_packet(line):
+    """
+    Packet format:
+        U:<dist>,H:<heading_index>
+    """
+    try:
+        parts = line.strip().split(",")
+        dist = float(parts[0].split(":")[1])
+        heading = int(parts[1].split(":")[1])
+        return dist, heading
+    except Exception as e:
+        print("[main] Parse error:", e, "line:", line)
+        return None, None
+
+def main():
+    print("[main] Starting BORIS SLAM-Lite...")
+
+    ser = serial.Serial(SERIAL_PORT, BAUD, timeout=1)
+
+    mapper = Mapper()
+    visualizer = Visualizer(mapper)
+
+    while True:
+        try:
+            line = ser.readline().decode(errors="ignore").strip()
+            if not line:
+                continue
+
+            dist, heading_index = parse_packet(line)
+            if dist is None:
+                continue
+
+            # Update occupancy grid
+            mapper.update_from_packet(line)
+
+            # Update visualizer
+            visualizer.update(heading_index)
+
+        except KeyboardInterrupt:
+            print("\n[main] Shutting down.")
+            break
+        except Exception as e:
+            print("[main] Error:", e)
+            time.sleep(0.1)
+
+if __name__ == "__main__":
+    main()
+
+
+
+
 """
 main.py — Jetson Nano SLAM Control Loop
 Author: Jackson Bowen
 Description:
     High-level SLAM + navigation loop for Jetson Nano.
     Communicates with ESP32 for motors, servo, and sensors.
-
-Psuedocode for right now
-
-init serial
-init map
-init localization
 
 loop:
     read sensors
@@ -19,7 +74,7 @@ loop:
     send movement command (with kalman filter prediction)
     visualize (optional)
 
-"""
+
 import os
 import time
 #Hardware interfaces
@@ -49,7 +104,7 @@ def main():
     navigator = Navigator(grid, localization)
     headless = not os.environ.get("DISPLAY")
 
-    """if not headless:
+    if not headless:
         visual = Visualizer(grid, localization, show_rays=True)
     else:
         print("[Visualizer] Running headless — visualization disabled")
@@ -59,7 +114,7 @@ def main():
                 pass
 
         visual = DummyVisualizer()
-        """
+        
     visual = Visualizer(grid, localization, show_rays=True, save_frames=False)
 
 
@@ -126,3 +181,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+"""
