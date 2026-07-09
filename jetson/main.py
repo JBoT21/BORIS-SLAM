@@ -27,7 +27,7 @@ def main():
 
     ser = serial.Serial(SERIAL_PORT, BAUD, timeout=1)
 
-    mapper = Mapper()
+    mapper = MappingEngine()
     visualizer = Visualizer(mapper)
 
     while True:
