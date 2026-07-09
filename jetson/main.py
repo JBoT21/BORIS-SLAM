@@ -3,6 +3,7 @@ import time
 
 from slam.mapping import MappingEngine
 from slam.nav import Navigator
+from slam.visualize import Visualizer   
 
 # Adjust to your Jetson's serial device
 SERIAL_PORT = "/dev/ttyUSB0"
