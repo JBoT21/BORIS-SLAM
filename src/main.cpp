@@ -134,13 +134,7 @@ void loop() {
     // - Very close: hard right
     // - Moderately close: hard left
     // - Otherwise: forward
-    if (distance < 20) {
-        // Hard right turn
-        leftMotor(150);
-        rightMotor(-150);
-        heading_index = (heading_index + 1) % 4;  // update heading
-    }
-    else if (distance < 40) {
+    if (distance < 40) {
         // Hard left turn
         leftMotor(-150);
         rightMotor(150);
