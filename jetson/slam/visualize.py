@@ -63,5 +63,8 @@ class Visualizer:
 
         cv2.arrowedLine(img, (cx, cy), (ex, ey), (0, 0, 255), 2)
 
-        cv2.imshow("BORIS SLAM-Lite", img)
-        cv2.waitKey(1)
+        #cv2.imshow("BORIS SLAM-Lite", img)
+        #cv2.waitKey(1)
+        pass
+        cv2.imwrite("/home/cevac/BORIS-SLAM/imgs/latest_map.png", img)
+
