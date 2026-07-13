@@ -13,8 +13,8 @@ const int echoPin = 15;
 #define AIN1 19
 #define AIN2 18 
 #define PWMB 23
-#define BIN1 21
-#define BIN2 22
+#define BIN1 25 //was 21
+#define BIN2 26 //Was 22
 
 // Heading index: 0=North, 1=East, 2=South, 3=West
 int heading_index = 0;
