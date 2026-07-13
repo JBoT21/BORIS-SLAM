@@ -135,26 +135,50 @@ void loop() {
     // - close obstacle (<40 cm): hard left turn
     // - Otherwise: forward
     
-    if (distance < 20) {
-        // Very close obstacle, stop and turn right
-        stopMotors();
-        leftMotor(150);
-        rightMotor(-150);
-        heading_index = (heading_index + 3) % 4;  // update heading
-    }
+    static unsigned long turn_end_time = 0;
+static int mode = 0;  
+// 0 = forward
+// 1 = turn left
+// 2 = turn right
 
-    else if (distance > 20 && distance < 40) {
-        // Hard left turn
+long distance = readUltrasonic();
+unsigned long now = millis();
+
+// If currently turning, continue until timer expires
+if (now < turn_end_time) {
+    if (mode == 1) {
         leftMotor(-150);
         rightMotor(150);
-        heading_index = (heading_index + 3) % 4;  // update heading
+    } else if (mode == 2) {
+        leftMotor(150);
+        rightMotor(-150);
     }
-    else {
-        // Forward
-        leftMotor(200);
-        rightMotor(200);
-        // heading_index unchanged
-    }
+    return;
+}
+
+// --- Decide new mode based on distance ---
+
+if (distance < 20) {
+    // Very close: choose the safer turn direction
+    // If robot is facing a wall, turning right is usually safer
+    mode = 2;  // turn right
+    turn_end_time = now + 400;  // turn for 400 ms
+    heading_index = (heading_index + 1) % 4;
+}
+
+else if (distance < 40) {
+    // Moderate obstacle: turn left
+    mode = 1;  // turn left
+    turn_end_time = now + 300;
+    heading_index = (heading_index + 3) % 4;
+}
+
+else {
+    // Clear path: go forward
+    mode = 0;
+    leftMotor(200);
+    rightMotor(200);
+}
 
     // Send data to Jetson for mapping:
     // U: <distance_cm>, H: <heading_index>
