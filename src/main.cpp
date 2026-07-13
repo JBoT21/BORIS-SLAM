@@ -143,7 +143,7 @@ void loop() {
         heading_index = (heading_index + 3) % 4;  // update heading
     }
 
-    else if (distance < 40) {
+    else if (distance > 20 && distance < 40) {
         // Hard left turn
         leftMotor(-150);
         rightMotor(150);
