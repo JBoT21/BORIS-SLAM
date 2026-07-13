@@ -135,13 +135,12 @@ void loop() {
     // - close obstacle (<40 cm): hard left turn
     // - Otherwise: forward
     
-    static unsigned long turn_end_time = 0;
+static unsigned long turn_end_time = 0;
 static int mode = 0;  
 // 0 = forward
 // 1 = turn left
 // 2 = turn right
 
-long distance = readUltrasonic();
 unsigned long now = millis();
 
 // If currently turning, continue until timer expires
