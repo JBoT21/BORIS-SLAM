@@ -131,9 +131,19 @@ void loop() {
     long distance = readUltrasonic();
 
     // Simple obstacle-avoidance logic:
+    // - very close obstacle (<20 cm): stop and turn right
     // - close obstacle (<40 cm): hard left turn
     // - Otherwise: forward
-    if (distance < 40) {
+    
+    if (distance < 20) {
+        // Very close obstacle, stop and turn right
+        stopMotors();
+        leftMotor(150);
+        rightMotor(-150);
+        heading_index = (heading_index + 3) % 4;  // update heading
+    }
+
+    else if (distance < 40) {
         // Hard left turn
         leftMotor(-150);
         rightMotor(150);
