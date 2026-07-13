@@ -156,7 +156,6 @@ if (now < turn_end_time) {
     return;
 }
 
-// --- Decide new mode based on distance ---
 
 if (distance < 20) {
     // Very close: choose the safer turn direction
@@ -164,6 +163,7 @@ if (distance < 20) {
     mode = 2;  // turn right
     turn_end_time = now + 400;  // turn for 400 ms
     heading_index = (heading_index + 1) % 4;
+    Serial.printf("Obstacle is %ld cms away! Turning right.", distance);
 }
 
 else if (distance < 40) {
@@ -171,6 +171,7 @@ else if (distance < 40) {
     mode = 1;  // turn left
     turn_end_time = now + 300;
     heading_index = (heading_index + 3) % 4;
+    Serial.printf("Obstacle is %ld cms away! Turning left.", distance);
 }
 
 else {
@@ -178,6 +179,7 @@ else {
     mode = 0;
     leftMotor(200);
     rightMotor(200);
+    Serial.printf("Path is clear. Moving forward. Distance: %ld cms.", distance);
 }
 
     // Send data to Jetson for mapping:
