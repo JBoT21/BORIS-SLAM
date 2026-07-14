@@ -10,8 +10,8 @@ const int echoPin = 15;
 
 // TB6612 Motor Driver Pins
 #define PWMA 5 
-#define AIN1 19
-#define AIN2 18 
+#define AIN1 16
+#define AIN2 17 
 #define PWMB 23
 #define BIN1 25 //was 21
 #define BIN2 26 //Was 22
@@ -32,8 +32,7 @@ long readUltrasonic() {
 
     long duration = pulseIn(echoPin, HIGH, 60000);
     if (duration == 0) {
-        // Timeout → no echo
-        return 803;  // sentinel "no obstacle" value, consistent with your logs
+        return 803; 
     }
     return duration * 0.034 / 2;  // cm
 }
@@ -152,30 +151,26 @@ if (now < turn_end_time) {
         leftMotor(150);
         rightMotor(-150);
     }
-    return;
 }
 
 
 if (distance < 20) {
-    // Very close: choose the safer turn direction
-    // If robot is facing a wall, turning right is usually safer
     mode = 2;  // turn right
-    turn_end_time = now + 400;  // turn for 400 ms
+    int turn_ms = map(distance, 0, 20, 900, 500);
+    turn_end_time = now + turn_ms;
     heading_index = (heading_index + 1) % 4;
-    Serial.printf("Obstacle is %ld cms away! Turning right.", distance);
+    Serial.printf("Obstacle %ld cm → turning right for %d ms\n", distance, turn_ms);
 }
 
 else if (distance < 40) {
-    // Moderate obstacle: turn left
     mode = 1;  // turn left
-    turn_end_time = now + 300;
+    int turn_ms = map(distance, 20, 40, 700, 400);
+    turn_end_time = now + turn_ms;
     heading_index = (heading_index + 3) % 4;
-    Serial.printf("Obstacle is %ld cms away! Turning left.", distance);
+    Serial.printf("Obstacle %ld cm → turning left for %d ms\n", distance, turn_ms);
 }
-
 else {
     // Clear path: go forward
-    mode = 0;
     leftMotor(200);
     rightMotor(200);
     Serial.printf("Path is clear. Moving forward. Distance: %ld cms.", distance);
