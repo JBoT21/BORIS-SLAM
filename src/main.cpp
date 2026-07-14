@@ -162,7 +162,7 @@ if (distance < 20) {
     Serial.printf("Obstacle %ld cm → turning right for %d ms\n", distance, turn_ms);
 }
 
-else if (distance < 40) {
+else if (distance < 60) {
     mode = 1;  // turn left
     int turn_ms = map(distance, 20, 40, 700, 400);
     turn_end_time = now + turn_ms;
