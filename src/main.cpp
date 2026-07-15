@@ -207,7 +207,7 @@ else {
 
     // Send data to Jetson for mapping:
     // U: <distance_cm>, H: <heading_index>
-    Serial.printf("U:%ld,H:%d,Y:%0.2f,P:%0.2f,R:%0.2f\n", distance, heading_index, yaw, pitch, roll);
+    Serial.printf("U:%ld,Y:%0.2f,P:%0.2f,R:%0.2f\n", distance, yaw, pitch, roll);
 
     delay(50);
 }
