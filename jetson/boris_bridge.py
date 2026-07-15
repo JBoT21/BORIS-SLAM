@@ -7,7 +7,6 @@ from serial_link import SerialLink
 
 print("Starting BORIS Foxglove bridge...")
 
-# Open serial connection to ESP32
 serial = SerialLink("/dev/ttyUSB0")
 
 
@@ -16,7 +15,7 @@ async def handler(websocket, path):
 
     channel_id = 1
 
-    # Foxglove channel definition
+    # Send channel definition (JSON only)
     channel_def = {
         "op": "add_channel",
         "channel": {
@@ -27,11 +26,9 @@ async def handler(websocket, path):
             "schema": ""
         }
     }
-
     await websocket.send(json.dumps(channel_def))
 
     while True:
-        # Read sensors from ESP32
         ultrasonic_cm, imu = serial.read_sensors()
 
         if imu is None:
@@ -41,7 +38,7 @@ async def handler(websocket, path):
         else:
             yaw, pitch, roll = imu
 
-        # Build telemetry payload
+        # Build payload (this becomes the binary data)
         payload = {
             "timestamp": time.time(),
             "distance_cm": ultrasonic_cm,
@@ -50,24 +47,27 @@ async def handler(websocket, path):
             "roll": roll,
         }
 
-        # Foxglove message format (binary data required)
-        msg = {
+        # Envelope (JSON)
+        envelope = {
             "op": "message",
             "channelId": channel_id,
-            "timestamp": int(time.time() * 1e9),
-            "data": json.dumps(payload).encode()   # ⭐ FIXED: must be bytes
+            "timestamp": int(time.time() * 1e9)
         }
 
         try:
-            await websocket.send(json.dumps(msg))
+            # 1) Send envelope as JSON
+            await websocket.send(json.dumps(envelope))
+
+            # 2) Send payload as raw bytes (binary frame)
+            await websocket.send(json.dumps(payload).encode())
+
         except Exception as e:
             print(f"Error in connection handler: {e}")
             break
 
-        await asyncio.sleep(0.05)  # 50ms update rate
+        await asyncio.sleep(0.05)
 
 
-# Start WebSocket server
 loop = asyncio.get_event_loop()
 server = websockets.serve(handler, "0.0.0.0", 8765)
 loop.run_until_complete(server)
