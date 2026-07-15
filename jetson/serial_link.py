@@ -47,11 +47,12 @@ class SerialLink:
                 self.last_ultrasonic = int(data["U"])
 
             # Extract IMU
-            if "Y" in data and "P" in data and "R" in data:
+            if "Y" in data and "P" in data and "R" in data and "H" in data:
                 yaw = float(data["Y"])
                 pitch = float(data["P"])
                 roll = float(data["R"])
-                self.last_imu = (yaw, pitch, roll)
+                heading_index = int(data["H"])
+                self.last_imu = (yaw, pitch, roll, heading_index)
 
         except Exception as e:
             print(f"[SerialLink] Parse error: {e}")

@@ -3,6 +3,9 @@
 #include "esp32-hal-ledc.h"
 #include "esp32-hal-gpio.h"
 #include <cstdint>
+#include "MPU6050.h"
+
+MPU6050 mpu;
 
 // Ultrasonic pins
 const int trigPin = 4;
@@ -77,6 +80,13 @@ void stopMotors() {
 void setup() {
     Serial.begin(115200);
 
+    mpu.initialize();
+    if (!mpu.testConnection()) {
+        Serial.println("MPU6050 connection failed!");
+    } else {
+        Serial.println("MPU6050 connected.");
+    }
+
     // Ultrasonic
     pinMode(trigPin, OUTPUT);
     pinMode(echoPin, INPUT);
@@ -97,6 +107,25 @@ void setup() {
 }
 
 void loop() {
+
+    int16_t ax, ay, az;
+    int16_t gx, gy, gz;
+
+    mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+    // Convert raw gyro to degrees/sec
+    float gyroX = gx / 131.0;
+    float gyroY = gy / 131.0;
+    float gyroZ = gz / 131.0;
+
+    // Simple integration for yaw/pitch/roll (not perfect but works)
+    static float yaw = 0, pitch = 0, roll = 0;
+    float dt = 0.05;  // 50ms loop
+
+    yaw   += gyroZ * dt;
+    pitch += gyroY * dt;
+    roll  += gyroX * dt;
+
     // Handle explicit commands from Jetson (optional override)
     if (Serial.available()) {
         char cmd = Serial.read();
@@ -178,7 +207,7 @@ else {
 
     // Send data to Jetson for mapping:
     // U: <distance_cm>, H: <heading_index>
-    Serial.printf("U:%ld,H:%d\n", distance, heading_index);
+    Serial.printf("U:%ld,H:%d,Y:%0.2f,P:%0.2f,R:%0.2f\n", distance, heading_index, yaw, pitch, roll);
 
     delay(50);
 }
