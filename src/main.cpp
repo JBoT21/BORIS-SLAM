@@ -188,7 +188,7 @@ if (distance < 20) {
     int turn_ms = map(distance, 0, 20, 900, 500);
     turn_end_time = now + turn_ms;
     heading_index = (heading_index + 1) % 4;
-    Serial.printf("Obstacle %ld cm → turning right for %d ms\n", distance, turn_ms);
+    //Serial.printf("Obstacle %ld cm → turning right for %d ms\n", distance, turn_ms);
 }
 
 else if (distance < 60) {
@@ -196,13 +196,13 @@ else if (distance < 60) {
     int turn_ms = map(distance, 20, 40, 700, 400);
     turn_end_time = now + turn_ms;
     heading_index = (heading_index + 3) % 4;
-    Serial.printf("Obstacle %ld cm → turning left for %d ms\n", distance, turn_ms);
+    // Serial.printf("Obstacle %ld cm → turning left for %d ms\n", distance, turn_ms);
 }
 else {
     // Clear path: go forward
     leftMotor(200);
     rightMotor(200);
-    Serial.printf("Path is clear. Moving forward. Distance: %ld cms.", distance);
+    //Serial.printf("Path is clear. Moving forward. Distance: %ld cms.", distance);
 }
 
     // Send data to Jetson for mapping:
