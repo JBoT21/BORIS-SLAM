@@ -39,20 +39,24 @@ class SerialLink:
             data = {}
 
             for p in parts:
+                if ':' not in p:
+                    continue
                 key, val = p.split(':')
                 data[key] = val
+
+            if not msg.startswith("U:"):
+                return  # ignore debug prints
 
             # Extract ultrasonic
             if "U" in data:
                 self.last_ultrasonic = int(data["U"])
 
             # Extract IMU
-            if "Y" in data and "P" in data and "R" in data and "H" in data:
+            if "Y" in data and "P" in data and "R" in data:
                 yaw = float(data["Y"])
                 pitch = float(data["P"])
                 roll = float(data["R"])
-                heading_index = int(data["H"])
-                self.last_imu = (yaw, pitch, roll, heading_index)
+                self.last_imu = (yaw, pitch, roll)
 
         except Exception as e:
             print(f"[SerialLink] Parse error: {e}")
