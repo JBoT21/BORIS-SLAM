@@ -34,10 +34,11 @@ async def handler(websocket, path):
         "id": channel_id,
         "topic": "boris/telemetry",
         "encoding": "json",
+        "schemaEncoding": "jsonschema",
         "schemaName": "BorisData",
-        "schema": BORIS_SCHEMA
-    }
-    }
+        "schema": BORIS_SCHEMA,
+    },
+}
     
     try:
         await websocket.send(json.dumps(channel_def))
