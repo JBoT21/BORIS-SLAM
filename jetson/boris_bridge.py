@@ -38,7 +38,6 @@ async def handler(websocket, path):
         else:
             yaw, pitch, roll = imu
 
-        # Build payload (this becomes the binary data)
         payload = {
             "timestamp": time.time(),
             "distance_cm": ultrasonic_cm,
