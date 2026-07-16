@@ -103,13 +103,14 @@ async def main():
     print("[BRIDGE] Make sure Foxglove is configured to connect to this address")
     
     async with websockets.serve(handler, "0.0.0.0", 8765):
-        print("[BRIDGE] ✓ Server running, waiting for Foxglove connection...")
+        print("[BRIDGE] Server running, waiting for Foxglove connection...")
         await asyncio.Future()  # Run forever
  
  
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
     except KeyboardInterrupt:
         print("\n[BRIDGE] Shutting down...")
     except Exception as e:
