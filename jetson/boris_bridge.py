@@ -90,7 +90,8 @@ async def handler(websocket, path):
         try:
             await websocket.send(json.dumps(envelope))
 
-            await websocket.send(json.dumps(payload).encode())
+            await websocket.send(json.dumps(payload).encode('utf-8'), binary=True)
+
 
         except Exception as e:
             print(f"[ERROR] {e}")
