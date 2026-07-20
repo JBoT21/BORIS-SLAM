@@ -29,7 +29,7 @@ async def handler(websocket, path):
 
     # Send channel definition
     channel_def = {
-        "op": "addChannel",  # Note: Foxglove uses camelCase
+        "op": "add_channel",
         "id": channel_id,
         "topic": "boris/telemetry",
         "encoding": "json",
