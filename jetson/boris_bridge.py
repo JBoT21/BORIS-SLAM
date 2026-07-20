@@ -49,16 +49,16 @@ async def handler(websocket, path):
 
     # Correct Foxglove channel definition
     channel_def = {
-        "op": "add_channel",
-        "channel": {
-            "id": channel_id,
-            "topic": "boris/telemetry",
-            "encoding": "json",
-            "schemaName": "BorisData",
-            "schema": json.dumps(BORIS_SCHEMA)
-
-        }
+    "op": "add_channel",
+    "channel": {
+        "id": channel_id,
+        "topic": "boris/telemetry",
+        "encoding": "json",
+        "schemaName": "BorisData",
+        "schemaEncoding": "jsonschema",
+        "schema": json.dumps(BORIS_SCHEMA)
     }
+}
 
     await websocket.send(json.dumps(channel_def))
     print("[BRIDGE] Channel definition sent")
