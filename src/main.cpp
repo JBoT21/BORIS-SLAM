@@ -5,7 +5,9 @@
 #include <cstdint>
 #include "MPU6050.h"
 
-MPU6050 mpu;
+#define MPU6050_ADDR 0x68
+MPU6050 mpu(MPU6050_ADDR, &Wire);
+
 
 // Ultrasonic pins
 const int trigPin = 4;
