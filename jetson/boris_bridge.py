@@ -23,7 +23,7 @@ async def handler(websocket, path):
             "topic": "boris/telemetry",
             "encoding": "json",
             "schemaEncoding": "jsonschema",
-            "schema": json.dumps(BORIS_SCHEMA)
+            "schema": ""
         }
     }
 
