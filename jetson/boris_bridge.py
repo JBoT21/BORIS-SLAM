@@ -9,6 +9,33 @@ print("Starting BORIS Foxglove bridge...")
 
 serial = SerialLink("/dev/ttyUSB0")
 
+BORIS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "timestamp": {
+            "type": "number",
+            "description": "Unix timestamp "
+        },
+        "distance_cm": {
+            "type": ["number", "null"],
+            "description": "Ultrasonic distance in cm"
+        },
+        "yaw": {
+            "type": ["number", "null"],
+            "description": "Yaw angle in degrees"
+        },
+        "pitch": {
+            "type": ["number", "null"],
+            "description": "Pitch angle in degrees"
+        },
+        "roll": {
+            "type": ["number", "null"],
+            "description": "Roll angle in degrees"
+        }
+    }
+}
+
+
 
 async def handler(websocket, path):
     print("[BRIDGE] Foxglove client connected")
@@ -23,7 +50,8 @@ async def handler(websocket, path):
             "topic": "boris/telemetry",
             "encoding": "json",
             "schemaEncoding": "jsonschema",
-            "schema": ""
+            "schema": json.dumps(BORIS_SCHEMA)
+
         }
     }
 
@@ -48,7 +76,6 @@ async def handler(websocket, path):
             "roll": roll,
         }
 
-        # Envelope (JSON)
         envelope = {
             "op": "message",
             "channelId": channel_id,
