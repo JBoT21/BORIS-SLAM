@@ -273,10 +273,6 @@ const int echoPin = 15;
 // Heading index: 0=North, 1=East, 2=South, 3=West
 int heading_index = 0;
 
-// Motor control
-float leftPWM = 0.0f;
-float rightPWM = 0.0f;
-
 long readUltrasonic() {
     digitalWrite(trigPin, LOW);
     delayMicroseconds(2);
