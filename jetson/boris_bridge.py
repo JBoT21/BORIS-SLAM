@@ -5,34 +5,40 @@ import time
 from serial_link import SerialLink
 from foxglove_websocket.server import FoxgloveServer
 
+from jetson.slam.map import OccupancyGrid
+occ_grid = OccupancyGrid(size=300)
 
 print("Starting BORIS Foxglove bridge...")
 
-
 serial = SerialLink("/dev/ttyUSB0")
 
+def convert_grid_for_foxglove(occ_grid):
+    size = occ_grid.size
+    resolution = 0.05  # meters per cell
+
+    origin_x = -size * resolution / 2
+    origin_y = -size * resolution / 2
+
+    flat_data = occ_grid.grid.flatten().tolist()
+
+    return {
+        "resolution": resolution,
+        "width": size,
+        "height": size,
+        "origin": {"x": origin_x, "y": origin_y, "z": 0.0},
+        "data": flat_data
+    }
 
 BORIS_SCHEMA = {
     "type": "object",
     "properties": {
-        "timestamp": {
-            "type": "number"
-        },
-        "distance_cm": {
-            "type": ["number", "null"]
-        },
-        "yaw": {
-            "type": ["number", "null"]
-        },
-        "pitch": {
-            "type": ["number", "null"]
-        },
-        "roll": {
-            "type": ["number", "null"]
-        },
+        "timestamp": {"type": "number"},
+        "distance_cm": {"type": ["number", "null"]},
+        "yaw": {"type": ["number", "null"]},
+        "pitch": {"type": ["number", "null"]},
+        "roll": {"type": ["number", "null"]},
     }
 }
-
 
 async def main():
 
@@ -45,35 +51,35 @@ async def main():
         print("[BRIDGE] Foxglove server running")
         print("[BRIDGE] Connect to ws://<jetson-ip>:8765")
 
+        # Telemetry channel
+        telemetry_channel = await server.add_channel({
+            "topic": "boris/telemetry",
+            "encoding": "json",
+            "schemaName": "BorisData",
+            "schemaEncoding": "jsonschema",
+            "schema": json.dumps(BORIS_SCHEMA),
+        })
+        print("[BRIDGE] ✓ Telemetry channel created")
 
-        channel_id = await server.add_channel(
-            {
-                "topic": "boris/telemetry",
-                "encoding": "json",
-                "schemaName": "BorisData",
-                "schemaEncoding": "jsonschema",
-                "schema": json.dumps(BORIS_SCHEMA),
-            }
-        )
-
-
-        print("[BRIDGE] Channel created")
-
+        # SLAM map channel
+        slam_channel = await server.add_channel({
+            "topic": "boris/slam_map",
+            "encoding": "json",
+            "schemaName": "foxglove.OccupancyGrid",
+            "schemaEncoding": "jsonschema",
+            "schema": ""  # built-in schema
+        })
+        print("[BRIDGE] ✓ SLAM map channel created")
 
         count = 0
 
         while True:
-
             ultrasonic_cm, imu = serial.read_sensors()
-
 
             if imu is not None:
                 yaw, pitch, roll = imu
             else:
-                yaw = None
-                pitch = None
-                roll = None
-
+                yaw = pitch = roll = None
 
             payload = {
                 "timestamp": time.time(),
@@ -83,31 +89,32 @@ async def main():
                 "roll": roll,
             }
 
-
+            # Send telemetry
             await server.send_message(
-                channel_id,
+                telemetry_channel,
                 int(time.time() * 1e9),
                 json.dumps(payload).encode("utf-8")
             )
 
+            # Send SLAM map every 10 cycles (2 Hz)
+            if count % 10 == 0:
+                map_data = convert_grid_for_foxglove(occ_grid)
+                await server.send_message(
+                    slam_channel,
+                    int(time.time() * 1e9),
+                    json.dumps(map_data).encode("utf-8")
+                )
+                print("[BRIDGE] ✓ SLAM map sent")
 
             count += 1
 
             if count % 20 == 0:
-                print(
-                    f"[BRIDGE] Sent {count} messages "
-                    f"Distance={ultrasonic_cm}"
-                )
-
+                print(f"[BRIDGE] Sent {count} messages - Distance={ultrasonic_cm}")
 
             await asyncio.sleep(0.05)
 
-
-
 if __name__ == "__main__":
-
     try:
         asyncio.run(main())
-
     except KeyboardInterrupt:
         print("\n[BRIDGE] Shutting down")
