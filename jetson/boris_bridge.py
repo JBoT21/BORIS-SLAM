@@ -31,7 +31,7 @@ async def handler(websocket, path):
     channel_def = {
         "op": "addChannel",  # Note: Foxglove uses camelCase
         "id": channel_id,
-        "topic": "/boris/telemetry",
+        "topic": "boris/telemetry",
         "encoding": "json",
         "schemaName": "BorisData",
         "schema": BORIS_SCHEMA
@@ -109,8 +109,11 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
     except KeyboardInterrupt:
         print("\n[BRIDGE] Shutting down...")
     except Exception as e:
         print(f"[ERROR] Fatal: {e}")
+    finally:
+        loop.close()
