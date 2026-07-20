@@ -62,7 +62,7 @@ async def handler(websocket, path):
                 "op": "message",
                 "channelId": channel_id,
                 "timestamp": int(time.time() * 1e9),
-                "message": payload
+                "data": payload
             }
 
             await websocket.send(json.dumps(message))
