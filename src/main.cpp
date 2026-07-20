@@ -4,9 +4,253 @@
 #include "esp32-hal-gpio.h"
 #include <cstdint>
 #include "MPU6050.h"
+#include "BasicLinearAlgebra.h"
 
-#define MPU6050_ADDR 0x68
+
+// MPU6050 I2C Address
+#define MPU6050_ADDR 0x68  // Default address (0x69 if AD0 pin is high)
+
+/* Define Kalman Parameters per-axis in case they are different*/
+#define PITCH_Q 0.001f
+#define PITCH_Q_BIAS 0.01f
+#define PITCH_R 0.1f
+#define ROLL_Q 0.001f
+#define ROLL_Q_BIAS 0.003f
+#define ROLL_R 0.1f
+/* TODO the YAW parameters are almost certainly wrong*/
+#define YAW_Q 0.001f
+#define YAW_Q_BIAS 0.005f
+#define YAW_R 0.03f
+/* TODO the VEL parameters are almost certainly wrong*/
+#define VEL_Q 0.1f
+#define VEL_Q_BIAS 0.01f
+#define VEL_R 0.01f
+
+#define K_FORWARD 0.1f
+#define K_ROTATION 0.1f
+#define TAU 0.2f
+
+enum ValueType
+{
+    PITCH,
+    ROLL,
+    YAW,
+    VELOCITY
+};
+
+typedef struct KalmanFilter
+{
+    Matrix<2, 1> state; //[angle, bias]
+    Matrix<2, 2> P;
+    float qValue;
+    float qBias;
+    float r;
+    ValueType type;
+} KalmanFilter;
+
+// Global objects
 MPU6050 mpu(MPU6050_ADDR, &Wire);
+
+
+float pitch=0, roll=0, yaw = 0; //gyroscope offsets from start
+float x=0, y=0, z=0; //accelerometer calculated position from start
+int stationary_counter = 0; // Counter for how many consecutive samples indicate stationary
+unsigned long lastTime = 0;
+
+// MPU6050 raw data storage
+int16_t ax, ay, az;
+int16_t gx, gy, gz;
+
+// MPU 6050 calibrated offsets
+long ax_offset = 0, ay_offset = 0, az_offset = 0;
+long gx_offset = 0, gy_offset = 0, gz_offset = 0;
+
+/* Kalman Filters */
+KalmanFilter pitchKF;
+KalmanFilter rollKF;
+KalmanFilter yawKF;
+KalmanFilter velKF;
+
+/* Kalman Filter Global data */
+float x_mps2=0, y_mps2=0, z_mps2=0; //linear accelerations in mps
+float leftPWM=0, rightPWM=0; //motor PWM values
+
+/* Data to send to Jetson Nano*/
+float forwardVel = 0;
+float heading = 0;
+float ultrasonicRange = 0;
+
+/* Initialize Kalman Filter Data */
+void KalmanInit(KalmanFilter &kf, float initValue, float initBias, float qValue, float qBias, float r, ValueType type)
+{
+    kf.state(0,0) = initValue;
+    kf.state(1,0) = initBias;
+    kf.P = Zeros<2,2>();
+    kf.qValue = qValue;
+    kf.qBias = qBias;
+    kf.r = r;
+    kf.type = type;
+}
+
+/* Update a Kalman Filter given the pre-computed control input */
+/* State change and measurement values are computed depending on the ValueType*/
+void KalmanUpdate(KalmanFilter &kf, float controlInput, float dt)
+{
+    /* These matrices are common to all angle measurements*/
+    static Matrix<2,2> A = Eye<2,2>();
+    static Matrix<2,1> B = Zeros<2,1>();
+    static Matrix<1,2> H = {1,0};
+    static Matrix<2,2> Q = Zeros<2,2>();
+    static Matrix<2,1> K = Zeros<2,1>();
+    static Matrix<2,1> xPred = Zeros<2,1>();
+    static Matrix<2,2> PPred = Zeros<2,2>();
+    static Matrix<2,2> I = Eye<2,2>();
+    static float z;
+    static float temp;
+
+    /* Instantiate Q*/
+    Q(0,0) = kf.qValue;;
+    Q(1,1) = kf.qBias;
+
+    /* Take Measurement and Configure State Change and Control Matrices */
+    if (kf.type == PITCH)
+    {
+        A(0,0) = 1;
+        A(0, 1) = -dt;
+        A(1,0) = 0;
+        A(1, 1) = 1;
+        z = atan2f(ay, az) * RAD_TO_DEG;
+        B(0) = dt;
+        // Serial.printf("%0.2f,", accelAngle); //for tuning the R parameter
+    }
+    else if (kf.type == ROLL)
+    {
+        A(0,0) = 1;
+        A(0, 1) = -dt;
+        A(1,0) = 0;
+        A(1, 1) = 1;
+        z = atan2f(-ax, sqrt(ay*ay + az*az)) * RAD_TO_DEG;
+        B(0) = dt;
+        // Serial.printf("%0.2f\n", accelAngle); //for tuning the R parameter
+    }
+    else if (kf.type  == YAW)
+    {
+        /* Ideally, this would implement first-order lag, as with the forward velocity.
+           However, doing so in this case would require a new KF struct and function
+           that works with 3x3 matrices. Going to leave this without the lag for now
+           until it proves to cause issues with position accuracy
+           Turning slowly may mitigate this issue*/
+        A(0,0) = 1;
+        A(0, 1) = -dt;
+        A(1,0) = 0;
+        A(1, 1) = 1;
+        B(0) = K_ROTATION * dt;
+    }
+    else if (kf.type == VELOCITY)
+    {
+        /* dt/TAU terms are a first-order lag adjustment, accounting for the time it takes
+           for the motors to spin up when commanded. TAU is the motor response time*/
+        A(0,0) = 1 - dt/TAU;
+        A(0, 1) = -dt;
+        A(1,0) = 0;
+        A(1, 1) = 1;
+        z = y_mps2*dt + kf.state(0);
+        B(0) = K_FORWARD * dt / TAU;
+    }
+    else
+    {
+        return;
+    }
+
+    /* Prediction Step*/
+    xPred = A*kf.state + B*controlInput;
+    PPred = A*kf.P*(~A) + Q;
+
+    /*Update Step*/
+    temp = (H*PPred*(~H) + kf.r)(0);
+    temp = 1.0f/temp;
+    K = PPred * (~H) * temp;
+    kf.state = xPred + K * (z - H*xPred);
+    kf.P = (I - K*H) * PPred;
+}
+
+/* Start collecting accelerometer and gyroscope data*/
+/* Also perform calibration to remove static biases from the readings*/
+void initIMU() {
+    int i;
+    long sumX=0, sumY=0, sumZ=0, sumGX=0, sumGY=0, sumGZ=0;
+    float gravityX=0, gravityY=0, gravityZ=0; //gravity components in mps
+    float init_pitch=0, init_roll=0, init_yaw = 0; //gyroscope offsets from start
+    float dt;
+
+    Wire.begin(SDA_PIN, SCL_PIN);
+    Wire.beginTransmission(MPU6050_ADDR);
+    int error = Wire.endTransmission();
+
+    if (error != 0) {
+        Serial.printf("Failed to find MPU6050 at address 0x%02X\n", MPU6050_ADDR);
+        Serial.println("Checking alternative address 0x69...");
+
+        Wire.beginTransmission(0x69);
+        error = Wire.endTransmission();
+        if (error == 0) {
+            Serial.println("Found MPU6050 at 0x69, updating address");
+            // Update the mpu address
+            mpu.setSlaveAddress(0,0x69);
+        } else {
+            Serial.println("MPU6050 not found at either address!");
+            while (1);  // Stops here if IMU not found
+        }
+    }
+
+    mpu.initialize();
+    mpu.setDLPFMode(4); //activate 20Hz low pass filter on sensor output
+
+    if (!mpu.testConnection()) {
+        Serial.println("MPU6050 connection test failed!");
+        while (1);
+    }
+
+    // Set up the accelerometer and gyro
+    mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_250);  // 250 deg/sec
+    mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2);   // 2g
+
+    /*Calibrate Accelerometer*/
+    /*Device must be sitting still during this time*/
+    for (i=0; i<200; i++)
+    {
+        mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+        sumX += ax;
+        sumY += ay;
+        sumZ += az;
+        sumGX += gx;
+        sumGY += gy;
+        sumGZ += gz;
+
+        /* Remove gravity bias calculations */
+        init_pitch = atan2f((float)ay, (float)az) * RAD_TO_DEG;
+        init_roll = atan2f(-(float)ax, sqrt((float)ay*(float)ay + (float)az*(float)az)) * RAD_TO_DEG;
+        gravityX = -sinf(init_roll * DEG_TO_RAD) * 16384.0f;;
+        gravityY = sinf(init_pitch * DEG_TO_RAD) * cosf(init_roll * DEG_TO_RAD) * 16384.0f;
+        gravityZ = cosf(init_roll * DEG_TO_RAD) * cosf(init_pitch * DEG_TO_RAD) * 16384.0f;
+        sumX -= (long) gravityX;
+        sumY -= (long) gravityY;
+        sumZ -= (long) gravityZ;
+        delay(10);
+    }
+
+    ax_offset = sumX / 200;
+    ay_offset = sumY / 200;
+    az_offset = sumZ / 200;
+    gx_offset = sumGX / 200;
+    gy_offset = sumGY / 200;
+    gz_offset = sumGZ / 200;
+
+    gx_offset = 0;
+    gy_offset = 0;
+
+    lastTime = micros();
+}
 
 
 // Ultrasonic pins
