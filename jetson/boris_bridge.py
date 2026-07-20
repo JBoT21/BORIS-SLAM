@@ -14,26 +14,31 @@ BORIS_SCHEMA = {
     "properties": {
         "timestamp": {
             "type": "number",
-            "description": "Unix timestamp "
+            "description": "Unix timestamp"
         },
         "distance_cm": {
-            "type": ["number", "null"],
+            "type": "number",
+            "nullable": True,
             "description": "Ultrasonic distance in cm"
         },
         "yaw": {
-            "type": ["number", "null"],
+            "type": "number",
+            "nullable": True,
             "description": "Yaw angle in degrees"
         },
         "pitch": {
-            "type": ["number", "null"],
+            "type": "number",
+            "nullable": True,
             "description": "Pitch angle in degrees"
         },
         "roll": {
-            "type": ["number", "null"],
+            "type": "number",
+            "nullable": True,
             "description": "Roll angle in degrees"
         }
     }
 }
+
 
 
 
