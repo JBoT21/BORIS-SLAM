@@ -3,7 +3,7 @@ import json
 import time
 
 from serial_link import SerialLink
-#from foxglove_websocket.server import FoxgloveServer
+from foxglove_websocket.server import FoxgloveServer
 import websockets
 
 
