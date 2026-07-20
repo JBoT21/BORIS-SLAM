@@ -1,11 +1,16 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include <Servo.h>
 #include "esp32-hal-ledc.h"
-#include "esp32-hal-gpio.h"
-#include <cstdint>
 #include "MPU6050.h"
-#include "BasicLinearAlgebra.h"
+#include "esp32-hal-gpio.h"
+#include <BasicLinearAlgebra.h>
+#include <cstdint>
 
+using namespace BLA;
+
+#define SDA_PIN 33
+#define SCL_PIN 32
 
 // MPU6050 I2C Address
 #define MPU6050_ADDR 0x68  // Default address (0x69 if AD0 pin is high)
