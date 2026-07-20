@@ -74,7 +74,7 @@ async def handler(websocket, path):
             await websocket.send(json.dumps(envelope))
 
             # 2) Payload (binary frame)
-            await websocket.send(json.dumps(payload).encode("utf-8"))
+            await websocket.write_message(json.dumps(payload).encode("utf-8"), binary=True)
 
             message_count += 1
 
