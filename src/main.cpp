@@ -327,7 +327,8 @@ void stopMotors() {
 void setup() {
     Serial.begin(115200);
 
-    mpu.initialize();
+    //mpu.initialize();
+    initIMU();
     if (!mpu.testConnection()) {
         Serial.println("MPU6050 connection failed!");
     } else {
