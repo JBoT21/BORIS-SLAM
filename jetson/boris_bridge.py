@@ -49,7 +49,7 @@ async def handler(websocket, path):
             "id": channel_id,
             "topic": "boris/telemetry",
             "encoding": "json",
-            "schemaEncoding": "jsonschema",
+            "schemaName": "BorisData",
             "schema": json.dumps(BORIS_SCHEMA)
 
         }
