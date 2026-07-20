@@ -29,12 +29,14 @@ async def handler(websocket, path):
 
     # Send channel definition
     channel_def = {
-        "op": "add_channel",
-        "id": channel_id,
-        "topic": "boris/telemetry",
-        "encoding": "json",
-        "schemaName": "BorisData",
-        "schema": BORIS_SCHEMA
+        "op": "add_channel", #Was addChannel
+        "channel": {
+            "id": channel_id,
+            "topic": "boris/telemetry",
+            "encoding": "json",
+            "schemaName": "BorisData",
+            "schema": BORIS_SCHEMA
+        }
     }
     
     try:
