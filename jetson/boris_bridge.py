@@ -98,7 +98,7 @@ async def main():
 
             # Send SLAM map every 10 cycles (2 Hz)
             if count % 10 == 0:
-                map_data = convert_grid_for_foxglove(serial.occ_grid)
+                map_data = convert_grid_for_foxglove(occ_grid)
 
                 await server.send_message(
                     slam_channel,
