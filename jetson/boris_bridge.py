@@ -1,19 +1,21 @@
 import asyncio
 import json
 import time
+import numpy as np
+import logging
 
 from serial_link import SerialLink
 from foxglove_websocket.server import FoxgloveServer
-
-
 from slam.mapping import MappingEngine
+
+logging.basicConfig(level=logging.INFO)
 
 print("Starting BORIS Foxglove bridge...")
 
 serial = SerialLink("/dev/ttyUSB0")
-mapper = MappingEngine()  # REAL SLAM GRID
+mapper = MappingEngine()
 
-# Convert yaw (degrees) to a heading index (0:N,1:E,2:S,3:W)
+# Convert yaw (degrees) to heading index
 def heading_from_yaw(yaw):
     yaw = yaw % 360
     if yaw < 45 or yaw >= 315:
@@ -25,23 +27,13 @@ def heading_from_yaw(yaw):
     else:
         return 3
 
-# Convert MappingEngine grid → Foxglove OccupancyGrid
-def convert_slam_grid_for_foxglove(grid):
-    height, width = grid.shape
-    resolution = 0.25  # 25 cm per cell
-
-    origin_x = 0
-    origin_y = 0
-
-    flat = grid.flatten().tolist()
-
-    return {
-        "resolution": resolution,
-        "width": width,
-        "height": height,
-        "origin": {"x": origin_x, "y": origin_y, "z": 0.0},
-        "data": flat
-    }
+# Convert SLAM grid → grayscale image (mono8)
+def grid_to_image(grid):
+    img = np.zeros_like(grid, dtype=np.uint8)
+    img[grid == -1] = 127   # unknown → gray
+    img[grid == 0]  = 255   # free → white
+    img[grid == 100] = 0    # occupied → black
+    return img.flatten().tolist()
 
 # Telemetry schema
 BORIS_SCHEMA = {
@@ -55,45 +47,15 @@ BORIS_SCHEMA = {
     }
 }
 
-# OccupancyGrid schema
-OCCUPANCY_GRID_SCHEMA = {
+# foxglove.Image schema
+IMAGE_SCHEMA = {
     "type": "object",
     "properties": {
         "timestamp": {"type": "number"},
         "frame_id": {"type": "string"},
-        "pose": {
-            "type": "object",
-            "properties": {
-                "position": {
-                    "type": "object",
-                    "properties": {
-                        "x": {"type": "number"},
-                        "y": {"type": "number"},
-                        "z": {"type": "number"}
-                    }
-                },
-                "orientation": {
-                    "type": "object",
-                    "properties": {
-                        "x": {"type": "number"},
-                        "y": {"type": "number"},
-                        "z": {"type": "number"},
-                        "w": {"type": "number"}
-                    }
-                }
-            }
-        },
-        "resolution": {"type": "number"},
         "width": {"type": "number"},
         "height": {"type": "number"},
-        "origin": {
-            "type": "object",
-            "properties": {
-                "x": {"type": "number"},
-                "y": {"type": "number"},
-                "z": {"type": "number"}
-            }
-        },
+        "encoding": {"type": "string"},
         "data": {
             "type": "array",
             "items": {"type": "number"}
@@ -112,7 +74,7 @@ async def main():
         print("[BRIDGE] Foxglove server running")
         print("[BRIDGE] Connect to ws://<jetson-ip>:8765")
 
-        # Telemetry channel 
+        # Telemetry channel
         telemetry_channel = await server.add_channel({
             "topic": "boris/telemetry",
             "encoding": "json",
@@ -120,17 +82,17 @@ async def main():
             "schemaEncoding": "jsonschema",
             "schema": json.dumps(BORIS_SCHEMA),
         })
-        print("[BRIDGE] Telemetry channel created")
+        print("[BRIDGE] ✓ Telemetry channel created")
 
-        # SLAM map channel
+        # SLAM map as foxglove.Image
         slam_channel = await server.add_channel({
             "topic": "boris/slam_map",
             "encoding": "json",
-            "schemaName": "foxglove.OccupancyGrid",
+            "schemaName": "foxglove.Image",
             "schemaEncoding": "jsonschema",
-            "schema": json.dumps(OCCUPANCY_GRID_SCHEMA)
+            "schema": json.dumps(IMAGE_SCHEMA),
         })
-        print("[BRIDGE] ✓ SLAM map channel created")
+        print("[BRIDGE] ✓ SLAM image channel created")
 
         count = 0
 
@@ -143,7 +105,7 @@ async def main():
             else:
                 yaw = pitch = roll = None
 
-            # SLAM update (but ONLY if both ultrasonic + IMU available)
+            # SLAM update
             if ultrasonic_cm is not None and imu is not None:
                 heading_index = heading_from_yaw(yaw)
                 packet = f"U:{ultrasonic_cm},H:{heading_index}"
@@ -164,42 +126,29 @@ async def main():
                 json.dumps(payload).encode("utf-8")
             )
 
-            # SLAM map every 10 cycles (~2 Hz)
-                        # SLAM map every 10 cycles (~2 Hz)
+            # SLAM image every 10 cycles (~2 Hz)
             if count % 10 == 0:
-                # Get and scale grid for Foxglove
                 grid = mapper.get_grid().copy()
-                grid[grid == 2] = 100  # convert occupied cells to ROS-style
+                grid[grid == 2] = 100  # occupied → 100
 
-                slam_msg = {
+                height, width = grid.shape
+
+                image_msg = {
                     "timestamp": int(time.time() * 1e9),
                     "frame_id": "map",
-                    "pose": {
-                        "position": {"x": 0, "y": 0, "z": 0},
-                        "orientation": {"x": 0, "y": 0, "z": 0, "w": 1}
-                    },
-                    **convert_slam_grid_for_foxglove(grid)
+                    "width": width,
+                    "height": height,
+                    "encoding": "mono8",
+                    "data": grid_to_image(grid),
                 }
 
                 await server.send_message(
                     slam_channel,
                     int(time.time() * 1e9),
-                    json.dumps(slam_msg).encode("utf-8")
+                    json.dumps(image_msg).encode("utf-8")
                 )
 
-                print("[BRIDGE] SLAM map sent")
-
-
-
-                await server.send_message(
-                    slam_channel,
-                    int(time.time() * 1e9),
-                    json.dumps(slam_msg).encode("utf-8")
-                )
-
-                print("[BRIDGE] SLAM map sent")
-            
-
+                print("[BRIDGE] SLAM image sent")
 
             count += 1
 
