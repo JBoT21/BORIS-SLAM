@@ -10,8 +10,21 @@ from slam.mapping import MappingEngine
 print("Starting BORIS Foxglove bridge...")
 
 serial = SerialLink("/dev/ttyUSB0")
-mapper = MappingEngine()  # uses GRID_W x GRID_H, UNKNOWN/FREE/OCCUPIED
+mapper = MappingEngine()  # REAL SLAM GRID
 
+# Convert yaw (degrees) to a heading index (0:N,1:E,2:S,3:W)
+def heading_from_yaw(yaw):
+    yaw = yaw % 360
+    if yaw < 45 or yaw >= 315:
+        return 0
+    elif yaw < 135:
+        return 1
+    elif yaw < 225:
+        return 2
+    else:
+        return 3
+
+# Convert MappingEngine grid → Foxglove OccupancyGrid
 def convert_slam_grid_for_foxglove(grid):
     height, width = grid.shape
     resolution = 0.25  # 25 cm per cell
@@ -29,6 +42,7 @@ def convert_slam_grid_for_foxglove(grid):
         "data": flat
     }
 
+# Telemetry schema
 BORIS_SCHEMA = {
     "type": "object",
     "properties": {
@@ -40,6 +54,7 @@ BORIS_SCHEMA = {
     }
 }
 
+# OccupancyGrid schema
 OCCUPANCY_GRID_SCHEMA = {
     "type": "object",
     "properties": {
@@ -96,6 +111,7 @@ async def main():
         print("[BRIDGE] Foxglove server running")
         print("[BRIDGE] Connect to ws://<jetson-ip>:8765")
 
+        # Telemetry channel 
         telemetry_channel = await server.add_channel({
             "topic": "boris/telemetry",
             "encoding": "json",
@@ -105,6 +121,7 @@ async def main():
         })
         print("[BRIDGE] ✓ Telemetry channel created")
 
+        # SLAM map channel
         slam_channel = await server.add_channel({
             "topic": "boris/slam_map",
             "encoding": "json",
@@ -117,18 +134,21 @@ async def main():
         count = 0
 
         while True:
-            # Read sensors from ESP32
             ultrasonic_cm, imu = serial.read_sensors()
 
-            # If you have a packet for mapping, feed it here:
-            # e.g. packet = serial.read_packet()
-            # mapper.update_from_packet(packet)
-
+            # Telemetry IMU
             if imu is not None:
                 yaw, pitch, roll = imu
             else:
                 yaw = pitch = roll = None
 
+            # SLAM update (but ONLY if both ultrasonic + IMU available)
+            if ultrasonic_cm is not None and imu is not None:
+                heading_index = heading_from_yaw(yaw)
+                packet = f"U:{ultrasonic_cm},H:{heading_index}"
+                mapper.update_from_packet(packet)
+
+            # Telemetry payload
             payload = {
                 "timestamp": time.time(),
                 "distance_cm": ultrasonic_cm,
@@ -143,9 +163,10 @@ async def main():
                 json.dumps(payload).encode("utf-8")
             )
 
-            # Send SLAM map every 10 cycles (~2 Hz)
+            # SLAM map every 10 cycles (~2 Hz)
             if count % 10 == 0:
                 grid = mapper.get_grid()
+
                 slam_msg = {
                     "timestamp": int(time.time() * 1e9),
                     "frame_id": "map",
@@ -161,6 +182,7 @@ async def main():
                     int(time.time() * 1e9),
                     json.dumps(slam_msg).encode("utf-8")
                 )
+
                 print("[BRIDGE] SLAM map sent")
 
             count += 1
