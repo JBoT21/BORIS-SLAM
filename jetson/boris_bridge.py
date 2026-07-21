@@ -5,7 +5,7 @@ import time
 from serial_link import SerialLink
 from foxglove_websocket.server import FoxgloveServer
 
-from mapping import MappingEngine
+from slam.mapping import MappingEngine
 
 print("Starting BORIS Foxglove bridge...")
 
