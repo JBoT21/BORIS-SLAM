@@ -4,6 +4,9 @@ import time
 
 from serial_link import SerialLink
 from foxglove_websocket.server import FoxgloveServer
+import logging #Remove later
+logging.basicConfig(level=logging.DEBUG) #Remove later
+
 
 from slam.mapping import MappingEngine
 
@@ -177,6 +180,7 @@ async def main():
                     **convert_slam_grid_for_foxglove(grid)
                 }
 
+                print("[DEBUG] SLAM message:", json.dumps(slam_msg)[:300], "...")
                 await server.send_message(
                     slam_channel,
                     int(time.time() * 1e9),
@@ -184,6 +188,8 @@ async def main():
                 )
 
                 print("[BRIDGE] SLAM map sent")
+                print("[DEBUG] Unique grid values:", set(mapper.get_grid().flatten()))
+
 
             count += 1
 
