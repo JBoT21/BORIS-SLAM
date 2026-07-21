@@ -64,6 +64,30 @@ async def main():
         OCCUPANCY_GRID_SCHEMA = {
             "type": "object",
             "properties": {
+                "timestamp": {"type": "number"},
+                "frame_id": {"type": "string"},
+                "pose": {
+                    "type": "object",
+                    "properties": {
+                        "position": {
+                            "type": "object",
+                            "properties": {
+                                "x": {"type": "number"},
+                                "y": {"type": "number"},
+                                "z": {"type": "number"}
+                            }
+                        },
+                        "orientation": {
+                            "type": "object",
+                            "properties": {
+                                "x": {"type": "number"},
+                                "y": {"type": "number"},
+                                "z": {"type": "number"},
+                                "w": {"type": "number"}
+                            }
+                        }
+                    }
+                },
                 "resolution": {"type": "number"},
                 "width": {"type": "number"},
                 "height": {"type": "number"},
@@ -80,7 +104,8 @@ async def main():
                     "items": {"type": "number"}
                 }
             }
-            }
+        }
+
 
         slam_channel = await server.add_channel({
             "topic": "boris/slam_map",
@@ -90,7 +115,7 @@ async def main():
             "schema": json.dumps(OCCUPANCY_GRID_SCHEMA)
         })
 
-        print("[BRIDGE] ✓ SLAM map channel created")
+        print("[BRIDGE] SLAM map channel created")
 
         count = 0
 
@@ -116,6 +141,23 @@ async def main():
                 int(time.time() * 1e9),
                 json.dumps(payload).encode("utf-8")
             )
+
+            slam_msg = {
+                "timestamp": int(time.time() * 1e9),
+                "frame_id": "map",
+                "pose": {
+                    "position": {"x": 0, "y": 0, "z": 0},
+                    "orientation": {"x": 0, "y": 0, "z": 0, "w": 1}
+                },
+                **convert_grid_for_foxglove(occ_grid)
+            }
+
+            await server.send_message(
+                slam_channel,
+                int(time.time() * 1e9),
+                slam_msg
+            )
+
 
             # Send SLAM map every 10 cycles (2 Hz)
             if count % 10 == 0:
