@@ -4,8 +4,6 @@ import time
 
 from serial_link import SerialLink
 from foxglove_websocket.server import FoxgloveServer
-import logging #Remove later
-logging.basicConfig(level=logging.DEBUG) #Remove later
 
 
 from slam.mapping import MappingEngine
