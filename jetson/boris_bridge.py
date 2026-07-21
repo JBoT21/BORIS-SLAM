@@ -92,7 +92,7 @@ async def main():
             "schemaEncoding": "jsonschema",
             "schema": json.dumps(IMAGE_SCHEMA),
         })
-        print("[BRIDGE] ✓ SLAM image channel created")
+        print("[BRIDGE] SLAM image channel created")
 
         count = 0
 
