@@ -5,7 +5,7 @@ import time
 from serial_link import SerialLink
 from foxglove_websocket.server import FoxgloveServer
 
-from jetson.slam.map import OccupancyGrid
+from slam.map import OccupancyGrid
 occ_grid = OccupancyGrid(size=300)
 
 print("Starting BORIS Foxglove bridge...")
