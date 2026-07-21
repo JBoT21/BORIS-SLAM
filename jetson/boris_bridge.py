@@ -66,7 +66,7 @@ async def main():
             "topic": "boris/slam_map",
             "encoding": "json",
             "schemaName": "foxglove.OccupancyGrid",
-            "schemaEncoding": "jsonschema",
+            "schemaEncoding": "none",
             "schema": ""  # built-in schema
         })
         print("[BRIDGE] ✓ SLAM map channel created")
@@ -98,11 +98,13 @@ async def main():
 
             # Send SLAM map every 10 cycles (2 Hz)
             if count % 10 == 0:
-                map_data = convert_grid_for_foxglove(occ_grid)
+                map_data = convert_grid_for_foxglove(serial.occ_grid)
+
                 await server.send_message(
                     slam_channel,
                     int(time.time() * 1e9),
-                    json.dumps(map_data).encode("utf-8")
+                    map_data
+                    #json.dumps(map_data).encode("utf-8")
                 )
                 print("[BRIDGE] SLAM map sent")
 
