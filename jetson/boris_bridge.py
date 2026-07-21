@@ -61,14 +61,35 @@ async def main():
         })
         print("[BRIDGE] ✓ Telemetry channel created")
 
-        # SLAM map channel
+        OCCUPANCY_GRID_SCHEMA = {
+            "type": "object",
+            "properties": {
+                "resolution": {"type": "number"},
+                "width": {"type": "number"},
+                "height": {"type": "number"},
+                "origin": {
+                    "type": "object",
+                    "properties": {
+                        "x": {"type": "number"},
+                        "y": {"type": "number"},
+                        "z": {"type": "number"}
+                    }
+                },
+                "data": {
+                    "type": "array",
+                    "items": {"type": "number"}
+                }
+            }
+            }
+
         slam_channel = await server.add_channel({
             "topic": "boris/slam_map",
             "encoding": "json",
             "schemaName": "foxglove.OccupancyGrid",
-            "schemaEncoding": "none",
-            "schema": ""  # built-in schema
+            "schemaEncoding": "jsonschema",
+            "schema": json.dumps(OCCUPANCY_GRID_SCHEMA)
         })
+
         print("[BRIDGE] ✓ SLAM map channel created")
 
         count = 0
