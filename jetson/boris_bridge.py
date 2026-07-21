@@ -135,41 +135,41 @@ async def main():
                 "roll": roll,
             }
 
-            # Send telemetry
+            # Telemetry (JSON → bytes)
             await server.send_message(
                 telemetry_channel,
                 int(time.time() * 1e9),
                 json.dumps(payload).encode("utf-8")
             )
 
-            slam_msg = {
-                "timestamp": int(time.time() * 1e9),
-                "frame_id": "map",
-                "pose": {
-                    "position": {"x": 0, "y": 0, "z": 0},
-                    "orientation": {"x": 0, "y": 0, "z": 0, "w": 1}
-                },
-                **convert_grid_for_foxglove(occ_grid)
-            }
-
-            await server.send_message(
-                slam_channel,
-                int(time.time() * 1e9),
-                slam_msg
-            )
-
-
-            # Send SLAM map every 10 cycles (2 Hz)
+            # SLAM map every 10 cycles (2 Hz)
             if count % 10 == 0:
-                map_data = convert_grid_for_foxglove(occ_grid)
+                slam_msg = {
+                    "timestamp": int(time.time() * 1e9),
+                    "frame_id": "map",
+                    "pose": {
+                        "position": {"x": 0, "y": 0, "z": 0},
+                        "orientation": {"x": 0, "y": 0, "z": 0, "w": 1}
+                    },
+                    **convert_grid_for_foxglove(occ_grid)
+                }
 
                 await server.send_message(
                     slam_channel,
                     int(time.time() * 1e9),
-                    map_data
-                    #json.dumps(map_data).encode("utf-8")
+                    json.dumps(slam_msg).encode("utf-8")
                 )
                 print("[BRIDGE] SLAM map sent")
+
+            count += 1
+
+            if count % 20 == 0:
+                print(f"[BRIDGE] Sent {count} messages - Distance={ultrasonic_cm}")
+
+            await asyncio.sleep(0.05)
+
+
+            print("[BRIDGE] SLAM map sent")
 
             count += 1
 
