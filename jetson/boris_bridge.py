@@ -32,8 +32,8 @@ def convert_slam_grid_for_foxglove(grid):
     height, width = grid.shape
     resolution = 0.25  # 25 cm per cell
 
-    origin_x = -width * resolution / 2
-    origin_y = -height * resolution / 2
+    origin_x = 0
+    origin_y = 0
 
     flat = grid.flatten().tolist()
 
@@ -122,7 +122,7 @@ async def main():
             "schemaEncoding": "jsonschema",
             "schema": json.dumps(BORIS_SCHEMA),
         })
-        print("[BRIDGE] ✓ Telemetry channel created")
+        print("[BRIDGE] Telemetry channel created")
 
         # SLAM map channel
         slam_channel = await server.add_channel({
@@ -167,8 +167,11 @@ async def main():
             )
 
             # SLAM map every 10 cycles (~2 Hz)
+                        # SLAM map every 10 cycles (~2 Hz)
             if count % 10 == 0:
-                grid = mapper.get_grid()
+                # Get and scale grid for Foxglove
+                grid = mapper.get_grid().copy()
+                grid[grid == 2] = 100  # convert occupied cells to ROS-style
 
                 slam_msg = {
                     "timestamp": int(time.time() * 1e9),
@@ -180,7 +183,6 @@ async def main():
                     **convert_slam_grid_for_foxglove(grid)
                 }
 
-                #print("[DEBUG] SLAM message:", json.dumps(slam_msg)[:300], "...")
                 await server.send_message(
                     slam_channel,
                     int(time.time() * 1e9),
@@ -188,7 +190,17 @@ async def main():
                 )
 
                 print("[BRIDGE] SLAM map sent")
-                #print("[DEBUG] Unique grid values:", set(mapper.get_grid().flatten()))
+
+
+
+                await server.send_message(
+                    slam_channel,
+                    int(time.time() * 1e9),
+                    json.dumps(slam_msg).encode("utf-8")
+                )
+
+                print("[BRIDGE] SLAM map sent")
+            
 
 
             count += 1
