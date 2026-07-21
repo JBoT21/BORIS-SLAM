@@ -27,7 +27,7 @@ def heading_from_yaw(yaw):
     else:
         return 3
 
-# Convert SLAM grid → grayscale image (mono8)
+# Convert SLAM grid to grayscale mono8 image
 def grid_to_image(grid):
     img = np.zeros_like(grid, dtype=np.uint8)
     img[grid == -1] = 127   # unknown → gray
@@ -84,10 +84,10 @@ async def main():
         })
         print("[BRIDGE] ✓ Telemetry channel created")
 
-        # SLAM map as foxglove.Image
+        # SLAM map as foxglove.Image 
         slam_channel = await server.add_channel({
             "topic": "boris/slam_map",
-            "encoding": "json",
+            "encoding": "image",   
             "schemaName": "foxglove.Image",
             "schemaEncoding": "jsonschema",
             "schema": json.dumps(IMAGE_SCHEMA),
