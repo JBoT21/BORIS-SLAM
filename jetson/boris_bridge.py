@@ -104,7 +104,7 @@ async def main():
                     int(time.time() * 1e9),
                     json.dumps(map_data).encode("utf-8")
                 )
-                print("[BRIDGE] ✓ SLAM map sent")
+                print("[BRIDGE] SLAM map sent")
 
             count += 1
 
