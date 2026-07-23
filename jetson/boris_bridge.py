@@ -146,10 +146,10 @@ async def main():
                     image_msg = {
                         "timestamp": int(time.time() * 1e9),
                         "frame_id": "map",
-                        "width": float(width),
-                        "height": float(height),
+                        "width": width,
+                        "height": height,
                         "encoding": "mono8",
-                        "step": float(width),   # bytes per row
+                        "step": width,   # bytes per row
                         "data": image_data,
                     }
 
