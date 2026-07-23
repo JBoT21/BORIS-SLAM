@@ -44,7 +44,7 @@ BORIS_SCHEMA = {
     }
 }
 
-# Exact foxglove.Image schema 
+
 IMAGE_SCHEMA = {
     "type": "object",
     "properties": {
