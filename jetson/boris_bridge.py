@@ -78,7 +78,7 @@ async def main():
  
         # Telemetry channel
         telemetry_channel = await server.add_channel({
-            "topic": "/boris/telemetry",
+            "topic": "boris/telemetry",
             "encoding": "json",
             "schemaName": "BorisData",
             "schemaEncoding": "jsonschema",
@@ -88,7 +88,7 @@ async def main():
  
         # SLAM map as image
         slam_channel = await server.add_channel({
-            "topic": "/boris/slam_map",
+            "topic": "boris/slam_map",
             "encoding": "json", 
             "schemaName": "RawImage",
             "schemaEncoding": "jsonschema",
