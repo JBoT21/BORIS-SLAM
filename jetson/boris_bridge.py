@@ -1,4 +1,3 @@
-
 import asyncio
 import json
 import time
@@ -36,7 +35,6 @@ def grid_to_image_bytes(grid):
     img[grid == -1] = 127   # unknown = gray
     img[grid == 0]  = 255   # free = white
     img[grid == 100] = 0    # occupied = black
-    # Return as bytes, then base64 encode
     return img.flatten().tobytes()
  
 # Telemetry schema
@@ -51,18 +49,18 @@ BORIS_SCHEMA = {
     }
 }
  
-# Foxglove RawImage schema (simpler than Image)
+# Proper foxglove.RawImage schema with underscore field names
 IMAGE_SCHEMA = {
     "type": "object",
     "properties": {
         "timestamp": {"type": "number"},
-        "frameId": {"type": "string"},
+        "frame_id": {"type": "string"},      # ← underscore, not camelCase
         "width": {"type": "integer"},
         "height": {"type": "integer"},
         "encoding": {"type": "string"},
         "data": {"type": "string"}  # base64-encoded
     },
-    "required": ["timestamp", "frameId", "width", "height", "encoding", "data"]
+    "required": ["timestamp", "frame_id", "width", "height", "encoding", "data"]
 }
  
 async def main():
@@ -78,7 +76,7 @@ async def main():
  
         # Telemetry channel
         telemetry_channel = await server.add_channel({
-            "topic": "boris/telemetry",
+            "topic": "/boris/telemetry",
             "encoding": "json",
             "schemaName": "BorisData",
             "schemaEncoding": "jsonschema",
@@ -86,15 +84,15 @@ async def main():
         })
         print("[BRIDGE] ✓ Telemetry channel created")
  
-        # SLAM map as image
+        # SLAM map as image - MUST use foxglove.RawImage
         slam_channel = await server.add_channel({
-            "topic": "boris/slam_map",
+            "topic": "/boris/slam_map",
             "encoding": "json", 
-            "schemaName": "RawImage",
+            "schemaName": "foxglove.RawImage",  # ← CRITICAL: Foxglove-specific schema
             "schemaEncoding": "jsonschema",
             "schema": json.dumps(IMAGE_SCHEMA),
         })
-        print("[BRIDGE] ✓ SLAM map channel created")
+        print("[BRIDGE] ✓ SLAM map channel created (foxglove.RawImage)")
  
         count = 0
  
@@ -133,6 +131,12 @@ async def main():
                 if count % 10 == 0:
                     grid = mapper.get_grid().copy()
                     
+                    # Debug: check grid state
+                    if grid.size == 0:
+                        print("[WARN] Grid is empty!")
+                    elif np.all(grid == 0):
+                        print("[WARN] Grid is all zeros (no data)")
+                    
                     # Ensure grid is 2D
                     if len(grid.shape) != 2:
                         print(f"[ERROR] Grid has unexpected shape: {grid.shape}")
@@ -145,14 +149,14 @@ async def main():
                         # Base64 encode
                         image_base64 = base64.b64encode(image_bytes).decode('utf-8')
  
-                        # Create image message
+                        # Create image message with CORRECT field names (underscore!)
                         image_msg = {
-                            "timestamp": int(time.time() * 1e9),
-                            "frameId": "map",
+                            "timestamp": time.time(),     # Seconds (not nanoseconds for this schema)
+                            "frame_id": "map",            # ← underscore
                             "width": width,
                             "height": height,
                             "encoding": "mono8",
-                            "data": image_base64,  # Base64-encoded byte string
+                            "data": image_base64,         # Base64-encoded bytes
                         }
  
                         await server.send_message(
@@ -161,17 +165,19 @@ async def main():
                             json.dumps(image_msg).encode("utf-8")
                         )
  
-                        print(f"[BRIDGE] ✓ SLAM map sent ({width}x{height})")
+                        print(f"[BRIDGE] ✓ Image sent ({width}x{height}, {len(image_base64)} bytes)")
  
                 count += 1
  
                 if count % 20 == 0:
-                    print(f"[BRIDGE] Sent {count} messages - Distance={ultrasonic_cm}cm")
+                    print(f"[BRIDGE] {count} messages - Distance={ultrasonic_cm}cm")
  
                 await asyncio.sleep(0.05)
  
             except Exception as e:
                 print(f"[ERROR] {e}")
+                import traceback
+                traceback.print_exc()
                 await asyncio.sleep(0.1)
  
  
