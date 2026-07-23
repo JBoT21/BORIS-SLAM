@@ -15,7 +15,7 @@ print("Starting BORIS Foxglove bridge (foxglove.Image, mono8)...")
 serial = SerialLink("/dev/ttyUSB0")
 mapper = MappingEngine()
 
-def heading_from_yaw(yaw):
+def heading_from_yaw(yaw: float) -> int:
     yaw = yaw % 360
     if yaw < 45 or yaw >= 315:
         return 0
@@ -26,7 +26,7 @@ def heading_from_yaw(yaw):
     else:
         return 3
 
-def grid_to_image_bytes(grid):
+def grid_to_image_bytes(grid: np.ndarray):
     img = np.zeros_like(grid, dtype=np.uint8)
     img[grid == -1] = 127   # unknown = gray
     img[grid == 0]  = 255   # free = white
@@ -44,6 +44,7 @@ BORIS_SCHEMA = {
     }
 }
 
+# Exact foxglove.Image schema (numbers, not integers)
 IMAGE_SCHEMA = {
     "type": "object",
     "properties": {
@@ -58,7 +59,15 @@ IMAGE_SCHEMA = {
             "items": {"type": "number"}
         }
     },
-    "required": ["timestamp", "frame_id", "width", "height", "encoding", "step", "data"]
+    "required": [
+        "timestamp",
+        "frame_id",
+        "width",
+        "height",
+        "encoding",
+        "step",
+        "data"
+    ]
 }
 
 async def main():
@@ -124,13 +133,6 @@ async def main():
                     grid = mapper.get_grid().copy()
                     grid[grid == 2] = 100  # occupied → 100
 
-                    print("\n[DEBUG GRID]")
-                    print(f"  Shape: {grid.shape}")
-                    print(f"  Size: {grid.size}")
-                    print(f"  Dtype: {grid.dtype}")
-                    print(f"  Min/Max: {grid.min()} / {grid.max()}")
-                    print(f"  Unique values: {np.unique(grid)}")
-
                     if len(grid.shape) != 2:
                         print(f"[ERROR] Grid is not 2D! Shape: {grid.shape}")
                         await asyncio.sleep(0.05)
@@ -138,31 +140,18 @@ async def main():
                         continue
 
                     height, width = grid.shape
-                    print(f"  Dimensions: {width}x{height}")
 
                     image_data = grid_to_image_bytes(grid)
-
-                    print("[DEBUG IMAGE]")
-                    print(f"  Data length: {len(image_data)}")
-                    print(f"  Expected length: {width * height}")
-                    print(f"  Match: {len(image_data) == width * height}")
 
                     image_msg = {
                         "timestamp": int(time.time() * 1e9),
                         "frame_id": "map",
-                        "width": width,
-                        "height": height,
+                        "width": float(width),
+                        "height": float(height),
                         "encoding": "mono8",
-                        "step": width,          # bytes per row
+                        "step": float(width),   # bytes per row
                         "data": image_data,
                     }
-
-                    print("[DEBUG MESSAGE]")
-                    print(f"  Width: {image_msg['width']}")
-                    print(f"  Height: {image_msg['height']}")
-                    print(f"  Encoding: {image_msg['encoding']}")
-                    print(f"  Step: {image_msg['step']}")
-                    print(f"  Data size: {len(image_msg['data'])}\n")
 
                     await server.send_message(
                         slam_channel,
