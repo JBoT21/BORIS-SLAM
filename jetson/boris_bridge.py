@@ -84,8 +84,8 @@ TF_SCHEMA = {
     "type": "object",
     "properties": {
         "timestamp": {"type": "number"},
-        "parent_frame_id": {"type": "string"},
-        "child_frame_id": {"type": "string"},
+        "frame_id": {"type": "string"},          # parent frame
+        "child_frame_id": {"type": "string"},    # child frame
         "translation": {
             "type": "object",
             "properties": {
@@ -103,7 +103,14 @@ TF_SCHEMA = {
                 "w": {"type": "number"}
             }
         }
-    }
+    },
+    "required": [
+        "timestamp",
+        "frame_id",
+        "child_frame_id",
+        "translation",
+        "rotation"
+    ]
 }
 
 async def main():
@@ -138,7 +145,7 @@ async def main():
         tf_channel = await server.add_channel({
             "topic": "/tf",
             "encoding": "json",
-            "schemaName": "foxglove.Transform",
+            "schemaName": "foxglove.TransformStamped",
             "schemaEncoding": "jsonschema",
             "schema": json.dumps(TF_SCHEMA),
         })
@@ -175,10 +182,10 @@ async def main():
                     json.dumps(payload).encode("utf-8")
                 )
 
-                # publish static TF world->map every loop
+                # publish TF world->map
                 tf_msg = {
                     "timestamp": time.time(),
-                    "parent_frame_id": "world",
+                    "frame_id": "world",
                     "child_frame_id": "map",
                     "translation": {"x": 0.0, "y": 0.0, "z": 0.0},
                     "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0},
