@@ -106,7 +106,7 @@ async def main():
  
         # OccupancyGrid channel
         grid_channel = await server.add_channel({
-            "topic": "/boris/map",
+            "topic": "/boris/slam_map",
             "encoding": "json", 
             "schemaName": "OccupancyGrid",
             "schemaEncoding": "jsonschema",
