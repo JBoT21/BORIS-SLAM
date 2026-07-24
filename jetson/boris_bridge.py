@@ -96,7 +96,7 @@ async def main():
  
         # Telemetry channel
         telemetry_channel = await server.add_channel({
-            "topic": "boris/telemetry",
+            "topic": "/boris/telemetry",
             "encoding": "json",
             "schemaName": "BorisData",
             "schemaEncoding": "jsonschema",
@@ -106,7 +106,7 @@ async def main():
  
         # OccupancyGrid channel
         grid_channel = await server.add_channel({
-            "topic": "boris/map",
+            "topic": "/boris/map",
             "encoding": "json", 
             "schemaName": "nav_msgs.OccupancyGrid",  # ← Foxglove built-in type
             "schemaEncoding": "jsonschema",
