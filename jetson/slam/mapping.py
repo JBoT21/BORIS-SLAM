@@ -3,7 +3,7 @@ import numpy as np
 # Occupancy values
 UNKNOWN = -1
 FREE = 0
-OCCUPIED = 2
+OCCUPIED = 100
 
 # Grid size (adjust as needed)
 GRID_W = 50
