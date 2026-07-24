@@ -145,7 +145,7 @@ async def main():
         tf_channel = await server.add_channel({
             "topic": "/tf",
             "encoding": "json",
-            "schemaName": "foxglove.TransformStamped",
+            "schemaName": "TransformStamped",
             "schemaEncoding": "jsonschema",
             "schema": json.dumps(TF_SCHEMA),
         })
