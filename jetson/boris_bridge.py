@@ -10,7 +10,7 @@ from slam.mapping import MappingEngine
 
 logging.basicConfig(level=logging.INFO)
 
-print("Starting BORIS Foxglove bridge with OccupancyGrid + TF...")
+print("Starting BORIS Foxglove bridge with OccupancyGrid + TF (world -> map)...")
 
 serial = SerialLink("/dev/ttyUSB0")
 mapper = MappingEngine()
@@ -84,8 +84,8 @@ TF_SCHEMA = {
     "type": "object",
     "properties": {
         "timestamp": {"type": "number"},
-        "frame_id": {"type": "string"},          # parent frame
-        "child_frame_id": {"type": "string"},    # child frame
+        "frame_id": {"type": "string"},
+        "child_frame_id": {"type": "string"},
         "translation": {
             "type": "object",
             "properties": {
@@ -149,7 +149,7 @@ async def main():
             "schemaEncoding": "jsonschema",
             "schema": json.dumps(TF_SCHEMA),
         })
-        print("[BRIDGE] ✓ TF channel created")
+        print("[BRIDGE] ✓ TF channel created (world -> map)")
 
         count = 0
         resolution = 0.05  # meters per cell
@@ -182,7 +182,7 @@ async def main():
                     json.dumps(payload).encode("utf-8")
                 )
 
-                # publish TF world->map
+                # TF: world -> map
                 tf_msg = {
                     "timestamp": time.time(),
                     "frame_id": "world",
