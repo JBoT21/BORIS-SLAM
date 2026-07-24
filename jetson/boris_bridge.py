@@ -108,7 +108,7 @@ async def main():
         grid_channel = await server.add_channel({
             "topic": "/boris/map",
             "encoding": "json", 
-            "schemaName": "nav_msgs.OccupancyGrid",  # ← Foxglove built-in type
+            "schemaName": "OccupancyGrid",
             "schemaEncoding": "jsonschema",
             "schema": json.dumps(OCCUPANCY_GRID_SCHEMA),
         })
